@@ -70,6 +70,7 @@ const cameraBatchCount = document.getElementById('camera-batch-count') as HTMLEl
 
 const searchInput = document.getElementById('search-input') as HTMLInputElement;
 const btnSearchClear = document.getElementById('btn-search-clear') as HTMLButtonElement;
+const btnToggleAllVisibility = document.getElementById('btn-toggle-all-visibility') as HTMLButtonElement;
 
 const tabSuggestBanner = document.getElementById('tab-suggest-banner') as HTMLElement;
 const suggestDomain = document.getElementById('suggest-domain') as HTMLElement;
@@ -112,6 +113,14 @@ let currentTabId: number | null = null;
 let activeMatchedAccount: AccountEntry | null = null;
 let searchQuery = '';
 let timerInterval: number | null = null;
+const revealedAccountIds = new Set<string>();
+
+const EYE_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const EYE_OFF_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+function maskedCode(digits: number = 6): string {
+  return digits === 8 ? '**** ****' : '*** ***';
+}
 
 function showToast(message: string): void {
   toastEl.textContent = message;
@@ -207,6 +216,8 @@ async function renderAccounts(): Promise<void> {
 
     const initial = (account.issuer || account.label || '?').slice(0, 1).toUpperCase();
     const isHotp = account.type === 'hotp';
+    const isRevealed = revealedAccountIds.has(account.id);
+    const codePlaceholder = maskedCode(account.digits);
 
     card.innerHTML = `
       <div class="account-card-header">
@@ -233,8 +244,11 @@ async function renderAccounts(): Promise<void> {
         </div>
       </div>
       <div class="account-code-row">
-        <div class="account-code" title="Click to copy">${isHotp ? '••• •••' : '--- ---'}</div>
+        <div class="account-code ${isRevealed ? '' : 'masked'}" title="Click to copy">${codePlaceholder}</div>
         <div class="account-controls">
+          <button class="btn-icon btn-reveal" title="${isRevealed ? 'Hide code' : 'Reveal code'}" aria-label="${isRevealed ? 'Hide code' : 'Reveal code'}">
+            ${isRevealed ? EYE_OFF_SVG : EYE_SVG}
+          </button>
           ${isHotp ? '<button class="btn btn-sm btn-secondary btn-hotp">Next</button>' : createTimerSvg()}
           <button class="btn btn-sm btn-accent btn-fill" title="Fill into active webpage">Fill</button>
         </div>
@@ -269,11 +283,20 @@ async function updateAllCodes(): Promise<void> {
     const codeEl = card.querySelector<HTMLElement>('.account-code');
     if (!codeEl) continue;
 
-    if (account.type === 'totp') {
-      const code = await generateCode(account, now);
-      codeEl.textContent = formatCode(code);
+    const isRevealed = revealedAccountIds.has(account.id);
+    const code = await generateCode(account, now);
+    codeEl.dataset.code = code;
+    codeEl.textContent = isRevealed ? formatCode(code) : maskedCode(account.digits);
+    codeEl.classList.toggle('masked', !isRevealed);
 
-      // Update circular countdown
+    const revealBtn = card.querySelector<HTMLButtonElement>('.btn-reveal');
+    if (revealBtn) {
+      revealBtn.title = isRevealed ? 'Hide code' : 'Reveal code';
+      revealBtn.setAttribute('aria-label', revealBtn.title);
+      revealBtn.innerHTML = isRevealed ? EYE_OFF_SVG : EYE_SVG;
+    }
+
+    if (account.type === 'totp') {
       const remaining = secondsRemaining(account.period, now);
       const indicator = card.querySelector<SVGCircleElement>('.timer-indicator');
       const text = card.querySelector<HTMLElement>('.timer-text');
@@ -429,6 +452,22 @@ btnSearchClear.addEventListener('click', () => {
   searchQuery = '';
   btnSearchClear.classList.add('hidden');
   renderAccounts().catch(console.error);
+});
+
+btnToggleAllVisibility.addEventListener('click', async () => {
+  const allRevealed = accounts.length > 0 && accounts.every((a) => revealedAccountIds.has(a.id));
+  if (allRevealed) {
+    revealedAccountIds.clear();
+    showToast('Masked all codes with *');
+  } else {
+    for (const a of accounts) {
+      revealedAccountIds.add(a.id);
+    }
+    showToast('Revealed all codes.');
+  }
+  btnToggleAllVisibility.innerHTML = allRevealed ? EYE_SVG : EYE_OFF_SVG;
+  btnToggleAllVisibility.title = allRevealed ? 'Reveal all codes' : 'Hide all codes';
+  await updateAllCodes();
 });
 
 // 4. Header buttons
@@ -591,6 +630,18 @@ accountsList.addEventListener('click', async (e) => {
     return;
   }
 
+  // Reveal / Hide Button
+  if (target.closest('.btn-reveal')) {
+    e.stopPropagation();
+    if (revealedAccountIds.has(account.id)) {
+      revealedAccountIds.delete(account.id);
+    } else {
+      revealedAccountIds.add(account.id);
+    }
+    await updateAllCodes();
+    return;
+  }
+
   // Edit Button
   if (target.closest('.btn-edit')) {
     e.stopPropagation();
@@ -620,15 +671,29 @@ accountsList.addEventListener('click', async (e) => {
   if (target.closest('.btn-hotp')) {
     e.stopPropagation();
     const code = await consumeHotp(account.id);
+    const isRevealed = revealedAccountIds.has(account.id);
     const codeEl = card.querySelector<HTMLElement>('.account-code');
-    if (codeEl) codeEl.textContent = formatCode(code);
+    if (codeEl) {
+      codeEl.dataset.code = code;
+      codeEl.textContent = isRevealed ? formatCode(code) : maskedCode(account.digits);
+      codeEl.classList.toggle('masked', !isRevealed);
+    }
     await navigator.clipboard.writeText(code);
     showToast(`HOTP copied: ${code}`);
     await refreshVault();
     return;
   }
 
-  // Clicking the card or code row copies to clipboard
+  // Clicking the code element copies to clipboard
+  if (target.closest('.account-code')) {
+    e.stopPropagation();
+    const code = await generateCode(account);
+    await navigator.clipboard.writeText(code);
+    showToast(`Copied ${formatCode(code)} to clipboard!`);
+    return;
+  }
+
+  // Clicking anywhere else on the card copies to clipboard
   const code = await generateCode(account);
   await navigator.clipboard.writeText(code);
   showToast(`Copied ${formatCode(code)} to clipboard!`);

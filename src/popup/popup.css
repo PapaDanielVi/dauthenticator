@@ -269,7 +269,7 @@ body {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 8px 30px 8px 32px;
+  padding: 8px 56px 8px 32px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
@@ -282,7 +282,7 @@ body {
 
 .btn-clear {
   position: absolute;
-  right: 8px;
+  right: 30px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -294,6 +294,26 @@ body {
 }
 
 .btn-clear:hover {
+  color: var(--text-primary);
+}
+
+.btn-toggle-all {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.btn-toggle-all:hover {
   color: var(--text-primary);
 }
 
@@ -454,11 +474,37 @@ body {
   font-weight: 700;
   letter-spacing: 2px;
   color: #ffffff;
-  user-select: text;
+  user-select: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
 }
 
-.account-code-row:hover .account-code {
+.account-code:hover {
   color: #818cf8;
+}
+
+.account-code.masked {
+  letter-spacing: 3px;
+  color: #94a3b8;
+}
+
+.account-code.masked:hover {
+  color: #c7d2fe;
+}
+
+.btn-reveal {
+  padding: 3px;
+  color: var(--text-muted);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.btn-reveal:hover {
+  color: #c7d2fe;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .account-controls {
