@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DAuthenticator</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app" class="app-container">
+      <!-- 1. First-Run Setup View -->
+      <section id="view-setup" class="view hidden">
+        <div class="brand-hero">
+          <img src="/icons/icon-48.png" alt="DAuthenticator" class="hero-logo" />
+          <h1>DAuthenticator</h1>
+          <p class="subtitle">Local, zero-knowledge 2FA authenticator</p>
+        </div>
+        <form id="form-setup" class="form-card">
+          <p class="description">
+            Choose a master password to encrypt your 2FA vault on this machine with AES-256-GCM.
+          </p>
+          <div class="field">
+            <label for="setup-password">Master Password</label>
+            <input type="password" id="setup-password" required minlength="8" placeholder="Minimum 8 characters" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label for="setup-confirm">Confirm Master Password</label>
+            <input type="password" id="setup-confirm" required minlength="8" placeholder="Re-enter password" autocomplete="new-password" />
+          </div>
+          <div id="setup-error" class="alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Create Vault</button>
+        </form>
+      </section>
+
+      <!-- 2. Unlock Vault View -->
+      <section id="view-unlock" class="view hidden">
+        <div class="brand-hero">
+          <img src="/icons/icon-48.png" alt="DAuthenticator" class="hero-logo" />
+          <h1>DAuthenticator</h1>
+          <p class="subtitle">Vault is locked</p>
+        </div>
+        <form id="form-unlock" class="form-card">
+          <div class="field">
+            <label for="unlock-password">Master Password</label>
+            <input type="password" id="unlock-password" required placeholder="Enter master password" autocomplete="current-password" autofocus />
+          </div>
+          <div id="unlock-caps" class="alert-warning hidden">Caps Lock is ON</div>
+          <div id="unlock-error" class="alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Unlock</button>
+        </form>
+      </section>
+
+      <!-- 3. Unlocked Main View -->
+      <section id="view-main" class="view hidden">
+        <!-- Main Top Bar -->
+        <header class="main-header">
+          <div class="brand-mark">
+            <img src="/icons/icon-32.png" alt="Logo" class="mini-logo" />
+            <span class="app-title">DAuthenticator</span>
+          </div>
+          <div class="header-actions">
+            <button id="btn-scan-screen" class="btn-icon" title="Scan screen for QR code" aria-label="Scan screen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+            </button>
+            <button id="btn-add-account" class="btn-icon" title="Add 2FA Account" aria-label="Add account">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button id="btn-open-options" class="btn-icon" title="Settings & Imports" aria-label="Settings">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+            <button id="btn-lock-vault" class="btn-icon" title="Lock Vault Now" aria-label="Lock vault">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Search Box -->
+        <div class="search-container">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Search accounts (name, issuer, url)..." autocomplete="off" />
+          <button id="btn-search-clear" class="btn-clear hidden" aria-label="Clear search">&times;</button>
+        </div>
+
+        <!-- Active Tab Matching Notification / Quick Fill Banner -->
+        <div id="tab-suggest-banner" class="tab-suggest hidden">
+          <div class="suggest-info">
+            <span class="suggest-label">Current site:</span>
+            <strong id="suggest-domain"></strong>
+          </div>
+          <button id="btn-suggest-autofill" class="btn btn-sm btn-accent">Autofill</button>
+        </div>
+
+        <!-- Accounts List -->
+        <main id="accounts-list" class="accounts-scrollable">
+          <!-- Rendered dynamically -->
+        </main>
+
+        <div id="accounts-empty" class="empty-state hidden">
+          <p class="empty-title">No 2FA accounts found</p>
+          <p class="empty-subtitle">Click the <strong>+</strong> button or scan a QR code to add one.</p>
+        </div>
+      </section>
+
+      <!-- Modal: Add / Edit Account -->
+      <div id="modal-account" class="modal-backdrop hidden">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h2 id="modal-title">Add 2FA Account</h2>
+            <button id="modal-close" class="btn-close" aria-label="Close modal">&times;</button>
+          </div>
+          <div class="modal-tabs" id="add-modal-tabs">
+            <button class="tab-btn active" data-tab="manual">Manual Entry</button>
+            <button class="tab-btn" data-tab="drop">Upload QR Image</button>
+          </div>
+          <div class="modal-body">
+            <!-- Manual Form Tab -->
+            <form id="form-account" class="tab-content active" data-content="manual">
+              <input type="hidden" id="account-id" />
+              <div class="field">
+                <label for="acc-issuer">Issuer / Service</label>
+                <input type="text" id="acc-issuer" placeholder="e.g. GitHub, Google, AWS" required />
+              </div>
+              <div class="field">
+                <label for="acc-label">Account / Email</label>
+                <input type="text" id="acc-label" placeholder="e.g. danny@example.com" />
+              </div>
+              <div class="field">
+                <label for="acc-secret">Secret Key (Base32)</label>
+                <input type="text" id="acc-secret" placeholder="e.g. JBSWY3DPEHPK3PXP" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              </div>
+              <div class="field-row">
+                <div class="field half">
+                  <label for="acc-type">Type</label>
+                  <select id="acc-type">
+                    <option value="totp">TOTP (Time)</option>
+                    <option value="hotp">HOTP (Counter)</option>
+                  </select>
+                </div>
+                <div class="field half">
+                  <label for="acc-algo">Algorithm</label>
+                  <select id="acc-algo">
+                    <option value="SHA-1">SHA-1 (Default)</option>
+                    <option value="SHA-256">SHA-256</option>
+                    <option value="SHA-512">SHA-512</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field half">
+                  <label for="acc-digits">Digits</label>
+                  <select id="acc-digits">
+                    <option value="6">6 digits</option>
+                    <option value="8">8 digits</option>
+                  </select>
+                </div>
+                <div class="field half" id="group-period">
+                  <label for="acc-period">Period (seconds)</label>
+                  <input type="number" id="acc-period" value="30" min="1" max="86400" />
+                </div>
+                <div class="field half hidden" id="group-counter">
+                  <label for="acc-counter">Counter</label>
+                  <input type="number" id="acc-counter" value="0" min="0" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="acc-domains">Matching Domains (comma separated)</label>
+                <input type="text" id="acc-domains" placeholder="e.g. github.com" />
+              </div>
+              <div class="field-checkbox">
+                <label>
+                  <input type="checkbox" id="acc-pinned" />
+                  <span>Pin this account at the top</span>
+                </label>
+              </div>
+              <div id="account-error" class="alert-error hidden"></div>
+              <div class="modal-footer">
+                <button type="button" id="btn-cancel-account" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Account</button>
+              </div>
+            </form>
+
+            <!-- Drop / File Upload Tab -->
+            <div class="tab-content" data-content="drop">
+              <div id="qr-dropzone" class="dropzone">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <p>Drag and drop a QR code image here</p>
+                <span class="subtext">or click to choose an image file</span>
+                <input type="file" id="qr-file-input" accept="image/*" class="hidden" />
+              </div>
+              <div id="qr-drop-status" class="alert-info hidden"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script type="module" src="popup.ts"></script>
+  </body>
+</html>

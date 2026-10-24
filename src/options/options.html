@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DAuthenticator Settings & Import</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="options-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <img src="/icons/icon-32.png" alt="DAuthenticator Logo" class="brand-logo" />
+          <div class="brand-text">
+            <h2>DAuthenticator</h2>
+            <span class="brand-version">v1.0.0</span>
+          </div>
+        </div>
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-tab="import">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Import Accounts</span>
+          </button>
+          <button class="nav-item" data-tab="backup">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Backup & Export</span>
+          </button>
+          <button class="nav-item" data-tab="sync">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Chrome Sync</span>
+          </button>
+          <button class="nav-item" data-tab="security">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>Security & Master Password</span>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="content-area">
+        <!-- 1. Universal Multi-Provider Import Section -->
+        <section id="tab-import" class="tab-pane active">
+          <header class="section-header">
+            <h1>Import 2FA Accounts</h1>
+            <p class="section-desc">
+              Import from Google Authenticator, Aegis, 2FAS, Bitwarden, Ente, Raivo, or standard URI lists.
+            </p>
+          </header>
+
+          <div class="card">
+            <h3>Upload Backup File or QR Code Screenshot</h3>
+            <p class="card-desc">Supported: .json, .2fas, .txt, .csv, .dauth.enc, or QR screenshot images (.png, .jpg).</p>
+            <div id="import-dropzone" class="dropzone-large">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p><strong>Click to browse</strong> or drag and drop your backup file here</p>
+              <input type="file" id="import-file-input" class="hidden" />
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Or Paste Export Links / Text</h3>
+            <p class="card-desc">Paste <code>otpauth-migration://</code>, <code>otpauth://</code> links, or raw JSON/CSV.</p>
+            <textarea id="import-paste-area" rows="4" placeholder="Paste data here..."></textarea>
+            <div class="card-actions">
+              <button id="btn-import-paste" class="btn btn-primary">Parse Pasted Data</button>
+            </div>
+          </div>
+
+          <!-- Import Preview & Confirmation -->
+          <div id="import-preview-card" class="card hidden">
+            <div class="preview-header">
+              <div>
+                <h3 id="preview-source-title">Import Preview</h3>
+                <p id="preview-count" class="card-desc">0 accounts found</p>
+              </div>
+              <button id="btn-confirm-import" class="btn btn-primary">Confirm & Import to Vault</button>
+            </div>
+            <div id="preview-warnings" class="alert-warning hidden"></div>
+            <div class="preview-table-container">
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Issuer</th>
+                    <th>Account / Label</th>
+                    <th>Algorithm</th>
+                    <th>Digits</th>
+                  </tr>
+                </thead>
+                <tbody id="preview-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Backup & Export Section -->
+        <section id="tab-backup" class="tab-pane">
+          <header class="section-header">
+            <h1>Backup & Export</h1>
+            <p class="section-desc">Keep your 2FA accounts safe and independent of this browser.</p>
+          </header>
+
+          <div class="card">
+            <div class="backup-option">
+              <div>
+                <h3>One-Click Encrypted Vault Backup (.dauth.enc)</h3>
+                <p class="card-desc">
+                  Zero-knowledge AES-256-GCM backup encrypted with your master password. Safe to store anywhere (cloud drive, USB).
+                </p>
+              </div>
+              <button id="btn-export-enc" class="btn btn-primary">Export .enc Backup</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Decrypted / Plaintext Exports</h3>
+            <p class="card-desc">Plaintext exports are not encrypted. Only export them onto secure media.</p>
+            <div class="field">
+              <label for="export-password-confirm">Confirm Master Password to Export Plaintext:</label>
+              <input type="password" id="export-password-confirm" placeholder="Enter master password" autocomplete="current-password" />
+            </div>
+            <div id="export-error" class="alert-error hidden"></div>
+            <div class="card-actions">
+              <button id="btn-export-json" class="btn btn-secondary">Export Decrypted JSON</button>
+              <button id="btn-export-uris" class="btn btn-secondary">Export otpauth:// URI List</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Chrome Storage Sync Section -->
+        <section id="tab-sync" class="tab-pane">
+          <header class="section-header">
+            <h1>Chrome Storage Sync</h1>
+            <p class="section-desc">
+              Mirror your encrypted vault into Chrome's built-in cloud sync as a failsafe against accidental extension uninstallation.
+            </p>
+          </header>
+
+          <div class="card">
+            <div class="sync-status-box">
+              <div class="sync-metric">
+                <span class="metric-label">Sync Status</span>
+                <strong id="sync-status-text">Checking...</strong>
+              </div>
+              <div class="sync-metric">
+                <span class="metric-label">Last Backed Up</span>
+                <span id="sync-last-time">-</span>
+              </div>
+              <div class="sync-metric">
+                <span class="metric-label">Quota Usage</span>
+                <span id="sync-quota-usage">-</span>
+              </div>
+            </div>
+
+            <div class="field-checkbox">
+              <label>
+                <input type="checkbox" id="setting-auto-sync" />
+                <span>Automatically sync encrypted vault changes to Chrome Sync</span>
+              </label>
+            </div>
+
+            <div class="card-actions">
+              <button id="btn-sync-push" class="btn btn-primary">Push Vault to Chrome Sync Now</button>
+              <button id="btn-sync-merge" class="btn btn-secondary">Restore / Merge from Chrome Sync</button>
+            </div>
+            <div id="sync-alert" class="alert-info hidden"></div>
+          </div>
+        </section>
+
+        <!-- 4. Security & Master Password Section -->
+        <section id="tab-security" class="tab-pane">
+          <header class="section-header">
+            <h1>Security & Preferences</h1>
+            <p class="section-desc">Manage your master password, auto-lock timeouts and security policies.</p>
+          </header>
+
+          <div class="card">
+            <h3>Change Master Password</h3>
+            <p class="card-desc">Re-encrypts the vault with a fresh random salt and 600,000 PBKDF2 iterations.</p>
+            <form id="form-change-password">
+              <div class="field">
+                <label for="pwd-current">Current Master Password</label>
+                <input type="password" id="pwd-current" required />
+              </div>
+              <div class="field">
+                <label for="pwd-new">New Master Password (min 8 characters)</label>
+                <input type="password" id="pwd-new" required minlength="8" />
+              </div>
+              <div class="field">
+                <label for="pwd-confirm">Confirm New Master Password</label>
+                <input type="password" id="pwd-confirm" required minlength="8" />
+              </div>
+              <div id="pwd-error" class="alert-error hidden"></div>
+              <div id="pwd-success" class="alert-info hidden">Master password changed successfully.</div>
+              <div class="card-actions">
+                <button type="submit" class="btn btn-primary">Update Master Password</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3>Auto-Lock & Preferences</h3>
+            <div class="field">
+              <label for="setting-autolock">Inactivity Auto-Lock Timeout</label>
+              <select id="setting-autolock">
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes (Default)</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="0">Never (until browser closes)</option>
+              </select>
+            </div>
+            <div class="field-checkbox">
+              <label>
+                <input type="checkbox" id="setting-lock-system" />
+                <span>Lock vault immediately when operating system locks screen</span>
+              </label>
+            </div>
+            <div class="field-checkbox">
+              <label>
+                <input type="checkbox" id="setting-learn-domains" />
+                <span>Automatically associate domain names with accounts upon autofill</span>
+              </label>
+            </div>
+            <div class="card-actions">
+              <button id="btn-save-prefs" class="btn btn-primary">Save Preferences</button>
+            </div>
+          </div>
+
+          <div class="card danger-card">
+            <h3>Reset Extension / Erase Vault</h3>
+            <p class="card-desc">Permanently deletes the encrypted vault from this browser. This cannot be undone.</p>
+            <button id="btn-destroy-vault" class="btn btn-danger">Erase Vault & Reset</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Password Modal for Encrypted Backups -->
+    <div id="modal-password" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="modal-pwd-title">Encrypted Backup Password</h2>
+          <button id="modal-pwd-close" class="btn-close">&times;</button>
+        </div>
+        <form id="form-decrypt-backup" class="modal-body">
+          <p id="modal-pwd-desc">This backup is password-protected. Enter the password used to encrypt it.</p>
+          <div class="field">
+            <label for="backup-pwd-input">Backup Password</label>
+            <input type="password" id="backup-pwd-input" required autofocus />
+          </div>
+          <div id="backup-pwd-error" class="alert-error hidden"></div>
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-backup-pwd" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Decrypt & Continue</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module" src="options.ts"></script>
+  </body>
+</html>
