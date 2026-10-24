@@ -8,6 +8,30 @@ Author: Danny ([github.com/PapaDanielVi](https://github.com/PapaDanielVi))
 
 ---
 
+## Screenshots
+
+### Extension Popup
+Search accounts, view countdown rings, reveal or copy codes, and trigger autofill.
+
+![Extension Popup](screenshots/popup-view.png)
+
+### Import Accounts
+Import via drag and drop, QR image files, screen scan, webcam, or raw migration payloads.
+
+![Import Accounts](screenshots/import-accounts.png)
+
+### Chrome Storage Sync
+Encrypted vault mirroring to Chrome Sync with backup status and chunked storage quota tracking.
+
+![Chrome Storage Sync](screenshots/chrome-sync.png)
+
+### Security and Preferences
+Master password updates, inactivity auto-lock timeouts, and system lock detection.
+
+![Security and Preferences](screenshots/security-settings.png)
+
+---
+
 ## Security Architecture
 
 1. Zero-knowledge local vault: All secret seeds are encrypted at rest using Web Crypto (`crypto.subtle`). Key derivation uses PBKDF2 with SHA-256, 600,000 iterations, and a random 16-byte salt per vault. Encryption uses AES-256-GCM with a fresh 12-byte IV drawn for every write. Plaintext secrets never touch persistent storage or disk.

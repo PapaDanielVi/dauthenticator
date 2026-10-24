@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DAuthenticator",
   "short_name": "DAuth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local, privacy-first TOTP/HOTP authenticator with an encrypted vault, autofill and imports from Google Authenticator, Aegis, 2FAS and Bitwarden.",
   "minimum_chrome_version": "116",
   "icons": {
