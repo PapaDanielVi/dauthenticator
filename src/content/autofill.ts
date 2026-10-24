@@ -56,7 +56,7 @@ function findSplitInputs(): HTMLInputElement[] | null {
   const allInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input:not([type="hidden"])'))
     .filter((el) => isVisible(el) && !el.disabled && !el.readOnly);
 
-  // Group inputs by their common parent element
+  // 1. Group inputs sharing a direct parent element
   const groups = new Map<HTMLElement, HTMLInputElement[]>();
   for (const input of allInputs) {
     const parent = input.parentElement;
@@ -79,6 +79,30 @@ function findSplitInputs(): HTMLInputElement[] | null {
         return list;
       }
     }
+  }
+
+  // 2. Scan consecutive single-character input boxes (even if individually wrapped in div/span)
+  let currentRun: HTMLInputElement[] = [];
+  for (const el of allInputs) {
+    const isSingle =
+      (el.maxLength === 1 || el.size === 1) &&
+      (el.inputMode === 'numeric' ||
+        el.type === 'number' ||
+        el.type === 'text' ||
+        el.type === 'tel' ||
+        matchesHint(el.name) ||
+        matchesHint(el.id));
+    if (isSingle) {
+      currentRun.push(el);
+    } else {
+      if (currentRun.length >= 4 && currentRun.length <= 8) {
+        return currentRun;
+      }
+      currentRun = [];
+    }
+  }
+  if (currentRun.length >= 4 && currentRun.length <= 8) {
+    return currentRun;
   }
 
   return null;
@@ -124,6 +148,8 @@ export function performAutofill(rawCode: string): { success: boolean; fieldsFill
       const char = cleanCode[index] ?? '';
       input.focus();
       setNativeValue(input, char);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: char, code: `Digit${char}`, bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent('keyup', { key: char, code: `Digit${char}`, bubbles: true }));
     });
     flashHighlight(splitBoxes);
     const last = splitBoxes[cleanCode.length - 1];

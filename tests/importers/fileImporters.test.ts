@@ -52,16 +52,29 @@ describe('File & Format Importers', () => {
             algorithm: 'SHA1',
           },
         },
+        {
+          name: 'Heroku',
+          otp: {
+            issuer: 'Heroku',
+            account: 'dev@heroku.com',
+            secret: 'JBSWY3DPEHPK3PXP',
+            tokenType: 'TOTP',
+            digits: 6,
+            period: 30,
+            algorithm: 'SHA1',
+          },
+        },
       ],
     };
     const res = await importFromText(JSON.stringify(data));
     expect(res.source).toBe('2fas');
-    expect(res.accounts.length).toBe(1);
+    expect(res.accounts.length).toBe(2);
     expect(res.accounts[0]?.issuer).toBe('Cloudflare');
     expect(res.accounts[0]?.label).toBe('admin@company.com');
+    expect(res.accounts[1]?.issuer).toBe('Heroku');
   });
 
-  it('parses Aegis unencrypted JSON exports', async () => {
+  it('parses Aegis unencrypted JSON exports with separate or combined names', async () => {
     const data = {
       version: 1,
       header: { slots: null, params: null },
@@ -79,14 +92,27 @@ describe('File & Format Importers', () => {
               period: 30,
             },
           },
+          {
+            type: 'totp',
+            name: 'Linear: user@linear.app',
+            issuer: '',
+            info: {
+              secret: 'JBSWY3DPEHPK3PXP',
+              algo: 'SHA256',
+              digits: 6,
+              period: 30,
+            },
+          },
         ],
       },
     };
     const res = await importFromText(JSON.stringify(data));
     expect(res.source).toBe('aegis');
-    expect(res.accounts.length).toBe(1);
+    expect(res.accounts.length).toBe(2);
     expect(res.accounts[0]?.issuer).toBe('DigitalOcean');
     expect(res.accounts[0]?.label).toBe('john_doe');
+    expect(res.accounts[1]?.issuer).toBe('Linear');
+    expect(res.accounts[1]?.label).toBe('user@linear.app');
   });
 
   it('decrypts password-protected Aegis exports using scrypt + AES-GCM', async () => {

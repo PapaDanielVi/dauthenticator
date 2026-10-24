@@ -31,6 +31,7 @@ const previewTableBody = document.getElementById('preview-table-body') as HTMLEl
 
 // Backup elements
 const btnExportEnc = document.getElementById('btn-export-enc') as HTMLButtonElement;
+const btnExportEncJson = document.getElementById('btn-export-enc-json') as HTMLButtonElement;
 const exportPasswordConfirm = document.getElementById('export-password-confirm') as HTMLInputElement;
 const exportError = document.getElementById('export-error') as HTMLElement;
 const btnExportJson = document.getElementById('btn-export-json') as HTMLButtonElement;
@@ -271,8 +272,17 @@ function escapeHtml(text: string): string {
 
 btnExportEnc.addEventListener('click', async () => {
   try {
-    await exportEncryptedBackup();
-    showToast('Encrypted backup exported.');
+    await exportEncryptedBackup('enc');
+    showToast('Encrypted .enc backup exported.');
+  } catch (err) {
+    showToast(`Export error: ${(err as Error).message}`);
+  }
+});
+
+btnExportEncJson.addEventListener('click', async () => {
+  try {
+    await exportEncryptedBackup('json');
+    showToast('Encrypted .json backup exported.');
   } catch (err) {
     showToast(`Export error: ${(err as Error).message}`);
   }

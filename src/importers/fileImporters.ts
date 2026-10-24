@@ -111,8 +111,8 @@ function map2fasService(service: unknown): ImportedAccount | string {
   return validateImported({
     type: tokenType === 'HOTP' ? 'hotp' : 'totp',
     issuer: str(otp.issuer) || str(s.name),
-    label: str(otp.account) || str(otp.label),
-    secret: str(s.secret),
+    label: str(otp.account) || str(otp.label) || str(s.account),
+    secret: str(s.secret) || str(otp.secret),
     algorithm: (str(otp.algorithm) || undefined) as ImportedAccount['algorithm'] | undefined,
     digits: num(otp.digits) as ImportedAccount['digits'] | undefined,
     period: num(otp.period),
@@ -141,10 +141,17 @@ function mapAegisEntry(entry: unknown): ImportedAccount | string {
   if (type !== 'totp' && type !== 'hotp') {
     return `${type || 'unknown'} entries are not supported.`;
   }
+  let issuer = str(e.issuer);
+  let label = str(e.name);
+  if (!issuer && label.includes(':')) {
+    const colon = label.indexOf(':');
+    issuer = label.slice(0, colon).trim();
+    label = label.slice(colon + 1).trim();
+  }
   return validateImported({
     type,
-    issuer: str(e.issuer),
-    label: str(e.name),
+    issuer,
+    label,
     secret: str(info.secret),
     algorithm: (str(info.algo) || undefined) as ImportedAccount['algorithm'] | undefined,
     digits: num(info.digits) as ImportedAccount['digits'] | undefined,

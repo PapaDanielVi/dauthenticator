@@ -123,6 +123,11 @@ async function autofillActiveTab(): Promise<void> {
   }
 }
 
+// Hardening on service worker initialization
+setupStorageSecurity().catch((err) => {
+  console.error('Failed to set storage access level during initialization:', err);
+});
+
 // Lifecycle events
 chrome.runtime.onInstalled.addListener(async () => {
   await setupStorageSecurity();

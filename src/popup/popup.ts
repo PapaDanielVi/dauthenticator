@@ -675,9 +675,11 @@ async function processDroppedFile(file: File): Promise<void> {
   qrDropStatus.textContent = 'Processing image...';
   qrDropStatus.classList.remove('hidden');
   try {
+    showToast('Decoding QR image...');
     const result = await importFromImage(file);
     if (result.accounts.length === 0) {
       qrDropStatus.textContent = 'No valid 2FA credentials found in that image.';
+      showToast('No valid 2FA credentials found in that image.');
       return;
     }
     await addAccounts(result.accounts);
@@ -685,9 +687,51 @@ async function processDroppedFile(file: File): Promise<void> {
     modalAccount.classList.add('hidden');
     showToast(`Imported ${result.accounts.length} account(s)!`);
   } catch (err) {
-    qrDropStatus.textContent = `Error: ${(err as Error).message}`;
+    const errorMsg = (err as Error).message;
+    qrDropStatus.textContent = `Error: ${errorMsg}`;
+    showToast(`Import error: ${errorMsg}`);
   }
 }
+
+// Support drag-and-drop anywhere onto popup main window
+window.addEventListener('dragover', (e) => {
+  e.preventDefault();
+});
+
+viewMain.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  viewMain.classList.add('dragover');
+});
+
+viewMain.addEventListener('dragleave', (e) => {
+  if (e.relatedTarget === null || !viewMain.contains(e.relatedTarget as Node)) {
+    viewMain.classList.remove('dragover');
+  }
+});
+
+viewMain.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  viewMain.classList.remove('dragover');
+  const file = e.dataTransfer?.files[0];
+  if (file && (file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name))) {
+    await processDroppedFile(file);
+  }
+});
+
+// Support pasting a screenshot or QR image from clipboard (Cmd+V / Ctrl+V)
+document.addEventListener('paste', async (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        await processDroppedFile(file);
+        break;
+      }
+    }
+  }
+});
 
 // Start application
 init().catch(console.error);

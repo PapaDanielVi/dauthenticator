@@ -31,7 +31,7 @@ function timestampSuffix(): string {
 }
 
 /** Exports the vault in its encrypted state. Zero password prompt needed. */
-export async function exportEncryptedBackup(): Promise<void> {
+export async function exportEncryptedBackup(extension: 'enc' | 'json' = 'enc'): Promise<void> {
   const envelope = await getEncryptedVault();
   if (!envelope) {
     throw new Error('No vault to export.');
@@ -42,7 +42,9 @@ export async function exportEncryptedBackup(): Promise<void> {
     exportedAt: new Date().toISOString(),
     vault: envelope,
   };
-  const filename = `dauthenticator_backup_${timestampSuffix()}.dauth.enc`;
+  const filename = extension === 'json'
+    ? `dauthenticator_encrypted_${timestampSuffix()}.json`
+    : `dauthenticator_backup_${timestampSuffix()}.enc`;
   downloadText(JSON.stringify(payload, null, 2), filename, 'application/json');
 }
 

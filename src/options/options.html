@@ -104,12 +104,15 @@
           <div class="card">
             <div class="backup-option">
               <div>
-                <h3>One-Click Encrypted Vault Backup (.dauth.enc)</h3>
+                <h3>One-Click Encrypted Vault Backup (.enc / .json)</h3>
                 <p class="card-desc">
                   Zero-knowledge AES-256-GCM backup encrypted with your master password. Safe to store anywhere (cloud drive, USB).
                 </p>
               </div>
-              <button id="btn-export-enc" class="btn btn-primary">Export .enc Backup</button>
+              <div class="btn-group">
+                <button id="btn-export-enc" class="btn btn-primary">Export .enc</button>
+                <button id="btn-export-enc-json" class="btn btn-secondary">Export Encrypted .json</button>
+              </div>
             </div>
           </div>
 
