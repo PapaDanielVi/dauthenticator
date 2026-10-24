@@ -17,6 +17,7 @@ import { sanitizeAccount, validateImported } from '../shared/accounts';
 import { normalizeDomain } from '../shared/match';
 import { PasswordRequiredError } from '../shared/errors';
 import { decryptWithPassword, decryptWithSession, isEncryptedVault, WrongPasswordError, type EncryptedVault } from '../crypto/vault';
+import { isValidBase32, normalizeBase32 } from '../crypto/totp';
 import { extractOtpAuthUris, isOtpAuthUri, parseOtpAuthUri } from './otpauthUri';
 import { extractMigrationUris, parseGoogleMigrationUri } from './googleMigration';
 import { decrypt2fasServices, decryptAegis, isAegisFile } from './encryptedBackups';
@@ -349,6 +350,21 @@ export async function importFromText(input: string, options: ImportOptions = {})
 
   if (/otpauth:\/\//i.test(text)) {
     return importOtpAuthList(text);
+  }
+
+  const cleanSecret = normalizeBase32(text);
+  if (isValidBase32(cleanSecret) && cleanSecret.length >= 8) {
+    const collector = new ImportCollector();
+    collector.add(
+      validateImported({
+        type: 'totp',
+        issuer: options.fileName ? options.fileName.replace(/\.[^.]+$/, '') : 'Imported Secret',
+        label: '',
+        secret: cleanSecret,
+      }),
+      'Raw Secret',
+    );
+    return collector.finish('generic-json');
   }
 
   throw new Error('Unrecognized format. Supported: otpauth:// links, Google Authenticator, 2FAS, Aegis, Bitwarden, DAuthenticator and JSON/CSV exports.');

@@ -59,8 +59,15 @@
             <span class="app-title">DAuthenticator</span>
           </div>
           <div class="header-actions">
-            <button id="btn-scan-screen" class="btn-icon" title="Scan screen for QR code" aria-label="Scan screen">
+            <button id="btn-scan-screen" class="btn-icon" title="Scan visible screen for QR" aria-label="Scan screen">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+            </button>
+            <button id="btn-upload-qr-image" class="btn-icon" title="Upload QR image file (Google, Aegis, 2FAS, etc.)" aria-label="Upload QR image">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+            <input type="file" id="header-qr-file-input" accept="image/*" class="hidden" />
+            <button id="btn-scan-camera" class="btn-icon" title="Scan QR with webcam / camera" aria-label="Scan with camera">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </button>
             <button id="btn-add-account" class="btn-icon" title="Add 2FA Account" aria-label="Add account">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -189,6 +196,34 @@
               </div>
               <div id="qr-drop-status" class="alert-info hidden"></div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Live Camera / Webcam QR Scanner -->
+      <div id="modal-camera" class="modal-backdrop hidden">
+        <div class="modal-card camera-modal-card">
+          <div class="modal-header">
+            <h2>Scan QR with Camera</h2>
+            <button id="modal-camera-close" class="btn-close" aria-label="Close camera">&times;</button>
+          </div>
+          <div class="camera-body">
+            <div class="video-wrapper">
+              <video id="camera-video" playsinline autoplay muted></video>
+              <div class="viewfinder-box">
+                <div class="viewfinder-corner top-left"></div>
+                <div class="viewfinder-corner top-right"></div>
+                <div class="viewfinder-corner bottom-left"></div>
+                <div class="viewfinder-corner bottom-right"></div>
+                <div class="scan-laser"></div>
+              </div>
+            </div>
+            <div id="camera-status" class="camera-status">Point camera at QR code (Google Authenticator, Aegis, etc.)</div>
+            <div id="camera-batch-banner" class="alert-info hidden"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="btn-camera-cancel" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="btn-camera-finish" class="btn btn-primary hidden">Import Batch (<span id="camera-batch-count">0</span>)</button>
           </div>
         </div>
       </div>

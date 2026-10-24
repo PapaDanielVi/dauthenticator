@@ -10,6 +10,8 @@ import { addAccounts } from '../shared/vaultOps';
 import { clearSync, getSyncStatus, mergeFromSync, pushVaultToSync } from '../shared/sync';
 import { exportEncryptedBackup, exportPlainJsonBackup, exportPlainUriList } from '../shared/export';
 import { importFromFile, importFromText, SOURCE_LABELS, type ImportResult } from '../importers';
+import { scanVisibleTabForQr } from '../importers/qr';
+import { WebcamScanner } from '../importers/qrScanner';
 import { PasswordRequiredError } from '../shared/errors';
 import type { ImportedAccount } from '../shared/types';
 
@@ -20,6 +22,10 @@ const tabPanes = document.querySelectorAll<HTMLElement>('.tab-pane');
 // Import elements
 const importDropzone = document.getElementById('import-dropzone') as HTMLElement;
 const importFileInput = document.getElementById('import-file-input') as HTMLInputElement;
+const btnOptionsUploadQr = document.getElementById('btn-options-upload-qr') as HTMLButtonElement;
+const optionsQrFileInput = document.getElementById('options-qr-file-input') as HTMLInputElement;
+const btnOptionsScanScreen = document.getElementById('btn-options-scan-screen') as HTMLButtonElement;
+const btnOptionsScanCamera = document.getElementById('btn-options-scan-camera') as HTMLButtonElement;
 const importPasteArea = document.getElementById('import-paste-area') as HTMLTextAreaElement;
 const btnImportPaste = document.getElementById('btn-import-paste') as HTMLButtonElement;
 const importPreviewCard = document.getElementById('import-preview-card') as HTMLElement;
@@ -28,6 +34,16 @@ const previewCount = document.getElementById('preview-count') as HTMLElement;
 const btnConfirmImport = document.getElementById('btn-confirm-import') as HTMLButtonElement;
 const previewWarnings = document.getElementById('preview-warnings') as HTMLElement;
 const previewTableBody = document.getElementById('preview-table-body') as HTMLElement;
+
+// Camera modal elements
+const modalCamera = document.getElementById('modal-camera') as HTMLElement;
+const modalCameraClose = document.getElementById('modal-camera-close') as HTMLButtonElement;
+const cameraVideo = document.getElementById('camera-video') as HTMLVideoElement;
+const cameraStatus = document.getElementById('camera-status') as HTMLElement;
+const cameraBatchBanner = document.getElementById('camera-batch-banner') as HTMLElement;
+const btnCameraCancel = document.getElementById('btn-camera-cancel') as HTMLButtonElement;
+const btnCameraFinish = document.getElementById('btn-camera-finish') as HTMLButtonElement;
+const cameraBatchCount = document.getElementById('camera-batch-count') as HTMLElement;
 
 // Backup elements
 const btnExportEnc = document.getElementById('btn-export-enc') as HTMLButtonElement;
@@ -138,6 +154,119 @@ btnImportPaste.addEventListener('click', async () => {
     return;
   }
   await handleImportText(text);
+});
+
+btnOptionsUploadQr.addEventListener('click', () => {
+  optionsQrFileInput.value = '';
+  optionsQrFileInput.click();
+});
+
+optionsQrFileInput.addEventListener('change', async () => {
+  const file = optionsQrFileInput.files?.[0];
+  if (file) {
+    await handleImportFile(file);
+  }
+});
+
+btnOptionsScanScreen.addEventListener('click', async () => {
+  try {
+    showToast('Scanning screen for QR...');
+    const text = await scanVisibleTabForQr();
+    if (!text) {
+      showToast('No QR code found on the visible screen.');
+      return;
+    }
+    await handleImportText(text);
+  } catch (err) {
+    showToast(`Scan error: ${(err as Error).message}`);
+  }
+});
+
+// Camera Scanner in Options Page
+const optionsCameraScanner = new WebcamScanner();
+let optionsScannedUris = new Set<string>();
+let optionsBatchAccounts: ImportedAccount[] = [];
+
+async function openOptionsCameraScanner(): Promise<void> {
+  optionsScannedUris = new Set();
+  optionsBatchAccounts = [];
+  cameraBatchBanner.classList.add('hidden');
+  btnCameraFinish.classList.add('hidden');
+  cameraStatus.textContent = 'Point camera at QR code (Google Authenticator, Aegis, 2FAS, etc.)';
+  modalCamera.classList.remove('hidden');
+
+  try {
+    await optionsCameraScanner.start(
+      cameraVideo,
+      async (text) => {
+        if (optionsScannedUris.has(text)) return;
+        optionsScannedUris.add(text);
+
+        try {
+          const result = await importFromText(text);
+          if (result.accounts.length === 0) {
+            cameraStatus.textContent = 'QR code detected, but contained no valid 2FA accounts.';
+            return;
+          }
+
+          if (result.batch && result.batch.size > 1) {
+            optionsBatchAccounts.push(...result.accounts);
+            cameraBatchCount.textContent = String(optionsBatchAccounts.length);
+            btnCameraFinish.classList.remove('hidden');
+            cameraBatchBanner.textContent = `Scanned batch part ${result.batch.index + 1} of ${result.batch.size} (${optionsBatchAccounts.length} accounts found). Point at next QR code.`;
+            cameraBatchBanner.classList.remove('hidden');
+
+            if (optionsScannedUris.size >= result.batch.size) {
+              finishOptionsCameraImport();
+            }
+          } else {
+            closeOptionsCameraScanner();
+            displayImportPreview(result);
+          }
+        } catch (err) {
+          cameraStatus.textContent = `Error: ${(err as Error).message}`;
+        }
+      },
+      (err) => {
+        cameraStatus.textContent = `Camera error: ${err.message}`;
+      },
+    );
+  } catch (err) {
+    cameraStatus.textContent = `Could not access camera: ${(err as Error).message}`;
+  }
+}
+
+function closeOptionsCameraScanner(): void {
+  optionsCameraScanner.stop();
+  modalCamera.classList.add('hidden');
+}
+
+function finishOptionsCameraImport(): void {
+  const accounts = [...optionsBatchAccounts];
+  closeOptionsCameraScanner();
+  if (accounts.length > 0) {
+    displayImportPreview({
+      source: 'google-migration',
+      accounts,
+      warnings: [],
+    });
+  }
+}
+
+btnOptionsScanCamera.addEventListener('click', () => {
+  openOptionsCameraScanner().catch(console.error);
+});
+
+modalCameraClose.addEventListener('click', () => {
+  closeOptionsCameraScanner();
+});
+
+btnCameraCancel.addEventListener('click', () => {
+  closeOptionsCameraScanner();
+});
+
+btnCameraFinish.addEventListener('click', () => {
+  finishOptionsCameraImport();
 });
 
 async function handleImportFile(file: File, password?: string): Promise<void> {

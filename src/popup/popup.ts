@@ -30,8 +30,9 @@ import {
   togglePinAccount,
 } from '../shared/vaultOps';
 import { scanVisibleTabForQr } from '../importers/qr';
+import { WebcamScanner } from '../importers/qrScanner';
 import { importFromImage, importFromText } from '../importers';
-import type { AccountEntry } from '../shared/types';
+import type { AccountEntry, ImportedAccount } from '../shared/types';
 import type { FillCodeMessage } from '../shared/messages';
 
 // DOM Elements
@@ -50,9 +51,22 @@ const unlockCaps = document.getElementById('unlock-caps') as HTMLElement;
 const unlockError = document.getElementById('unlock-error') as HTMLElement;
 
 const btnScanScreen = document.getElementById('btn-scan-screen') as HTMLButtonElement;
+const btnUploadQrImage = document.getElementById('btn-upload-qr-image') as HTMLButtonElement;
+const headerQrFileInput = document.getElementById('header-qr-file-input') as HTMLInputElement;
+const btnScanCamera = document.getElementById('btn-scan-camera') as HTMLButtonElement;
 const btnAddAccount = document.getElementById('btn-add-account') as HTMLButtonElement;
 const btnOpenOptions = document.getElementById('btn-open-options') as HTMLButtonElement;
 const btnLockVault = document.getElementById('btn-lock-vault') as HTMLButtonElement;
+
+// Camera modal elements
+const modalCamera = document.getElementById('modal-camera') as HTMLElement;
+const modalCameraClose = document.getElementById('modal-camera-close') as HTMLButtonElement;
+const cameraVideo = document.getElementById('camera-video') as HTMLVideoElement;
+const cameraStatus = document.getElementById('camera-status') as HTMLElement;
+const cameraBatchBanner = document.getElementById('camera-batch-banner') as HTMLElement;
+const btnCameraCancel = document.getElementById('btn-camera-cancel') as HTMLButtonElement;
+const btnCameraFinish = document.getElementById('btn-camera-finish') as HTMLButtonElement;
+const cameraBatchCount = document.getElementById('camera-batch-count') as HTMLElement;
 
 const searchInput = document.getElementById('search-input') as HTMLInputElement;
 const btnSearchClear = document.getElementById('btn-search-clear') as HTMLButtonElement;
@@ -447,6 +461,109 @@ btnScanScreen.addEventListener('click', async () => {
   } catch (err) {
     showToast(`Scan error: ${(err as Error).message}`);
   }
+});
+
+btnUploadQrImage.addEventListener('click', () => {
+  headerQrFileInput.value = '';
+  headerQrFileInput.click();
+});
+
+headerQrFileInput.addEventListener('change', async () => {
+  const file = headerQrFileInput.files?.[0];
+  if (file) {
+    await processDroppedFile(file);
+  }
+});
+
+// Camera Scanner
+const cameraScanner = new WebcamScanner();
+let scannedQrTexts: Set<string> = new Set();
+let batchImportedAccounts: ImportedAccount[] = [];
+
+async function openCameraScanner(): Promise<void> {
+  scannedQrTexts = new Set();
+  batchImportedAccounts = [];
+  cameraBatchBanner.classList.add('hidden');
+  btnCameraFinish.classList.add('hidden');
+  cameraStatus.textContent = 'Point camera at QR code (Google Authenticator, Aegis, 2FAS, etc.)';
+  modalCamera.classList.remove('hidden');
+
+  try {
+    await cameraScanner.start(
+      cameraVideo,
+      async (text) => {
+        if (scannedQrTexts.has(text)) {
+          return;
+        }
+        scannedQrTexts.add(text);
+
+        try {
+          const result = await importFromText(text);
+          if (result.accounts.length === 0) {
+            cameraStatus.textContent = 'QR code detected, but contained no valid 2FA accounts.';
+            return;
+          }
+
+          if (result.batch && result.batch.size > 1) {
+            // Google Authenticator multi-part batch
+            batchImportedAccounts.push(...result.accounts);
+            cameraBatchCount.textContent = String(batchImportedAccounts.length);
+            btnCameraFinish.classList.remove('hidden');
+            cameraBatchBanner.textContent = `Scanned batch part ${result.batch.index + 1} of ${result.batch.size} (${batchImportedAccounts.length} accounts found). Point at next QR code.`;
+            cameraBatchBanner.classList.remove('hidden');
+
+            if (scannedQrTexts.size >= result.batch.size) {
+              await finishCameraImport();
+            }
+          } else {
+            // Single QR code (Google migration single, standard otpauth, Aegis, etc.)
+            closeCameraScanner();
+            await addAccounts(result.accounts);
+            await refreshVault();
+            showToast(`Imported ${result.accounts.length} account(s) via camera!`);
+          }
+        } catch (err) {
+          cameraStatus.textContent = `Error: ${(err as Error).message}`;
+        }
+      },
+      (err) => {
+        cameraStatus.textContent = `Camera error: ${err.message}`;
+      },
+    );
+  } catch (err) {
+    cameraStatus.textContent = `Could not access camera: ${(err as Error).message}`;
+  }
+}
+
+function closeCameraScanner(): void {
+  cameraScanner.stop();
+  modalCamera.classList.add('hidden');
+}
+
+async function finishCameraImport(): Promise<void> {
+  const accountsToImport = [...batchImportedAccounts];
+  closeCameraScanner();
+  if (accountsToImport.length > 0) {
+    await addAccounts(accountsToImport);
+    await refreshVault();
+    showToast(`Imported ${accountsToImport.length} account(s) from batch!`);
+  }
+}
+
+btnScanCamera.addEventListener('click', () => {
+  openCameraScanner().catch(console.error);
+});
+
+modalCameraClose.addEventListener('click', () => {
+  closeCameraScanner();
+});
+
+btnCameraCancel.addEventListener('click', () => {
+  closeCameraScanner();
+});
+
+btnCameraFinish.addEventListener('click', async () => {
+  await finishCameraImport();
 });
 
 // Tab Suggest Autofill Banner

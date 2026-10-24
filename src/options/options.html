@@ -56,6 +56,12 @@
               <p><strong>Click to browse</strong> or drag and drop your backup file here</p>
               <input type="file" id="import-file-input" class="hidden" />
             </div>
+            <div class="card-actions" style="margin-top: 14px;">
+              <button id="btn-options-upload-qr" class="btn btn-secondary">Upload QR Image File</button>
+              <input type="file" id="options-qr-file-input" accept="image/*" class="hidden" />
+              <button id="btn-options-scan-screen" class="btn btn-secondary">Scan Screen for QR</button>
+              <button id="btn-options-scan-camera" class="btn btn-primary">Scan with Webcam / Camera</button>
+            </div>
           </div>
 
           <div class="card">
@@ -259,6 +265,34 @@
             <button type="submit" class="btn btn-primary">Decrypt & Continue</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Camera Scanner Modal -->
+    <div id="modal-camera" class="modal-backdrop hidden">
+      <div class="modal-card camera-modal-card">
+        <div class="modal-header">
+          <h2>Scan QR with Camera</h2>
+          <button id="modal-camera-close" class="btn-close">&times;</button>
+        </div>
+        <div class="camera-body">
+          <div class="video-wrapper">
+            <video id="camera-video" playsinline autoplay muted></video>
+            <div class="viewfinder-box">
+              <div class="viewfinder-corner top-left"></div>
+              <div class="viewfinder-corner top-right"></div>
+              <div class="viewfinder-corner bottom-left"></div>
+              <div class="viewfinder-corner bottom-right"></div>
+              <div class="scan-laser"></div>
+            </div>
+          </div>
+          <div id="camera-status" class="camera-status">Point camera at QR code (Google Authenticator, Aegis, 2FAS, etc.)</div>
+          <div id="camera-batch-banner" class="alert-info hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-camera-cancel" class="btn btn-secondary">Cancel</button>
+          <button type="button" id="btn-camera-finish" class="btn btn-primary hidden">Confirm Batch (<span id="camera-batch-count">0</span>)</button>
+        </div>
       </div>
     </div>
 

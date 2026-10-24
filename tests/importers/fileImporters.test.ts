@@ -248,4 +248,12 @@ Reddit;reddit_user;JBSWY3DPEHPK3PXP;SHA1;6`;
     expect(res.accounts[0]?.issuer).toBe('Reddit');
     expect(res.accounts[0]?.label).toBe('reddit_user');
   });
+
+  it('parses single raw Base32 secret string from QR scan', async () => {
+    const rawSecret = 'JBSWY3DPEHPK3PXP';
+    const res = await importFromText(rawSecret, { fileName: 'MyService.png' });
+    expect(res.accounts.length).toBe(1);
+    expect(res.accounts[0]?.secret).toBe('JBSWY3DPEHPK3PXP');
+    expect(res.accounts[0]?.issuer).toBe('MyService');
+  });
 });

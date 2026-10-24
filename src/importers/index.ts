@@ -1,11 +1,12 @@
 /**
  * Entry point for every import path: QR images, raw text and backup files.
  */
-import { decodeQrFromBlob } from './qr';
+import { decodeAllQrFromBlob } from './qr';
 import { importFromText } from './fileImporters';
 import type { ImportOptions, ImportResult } from './types';
 
 export { importFromText } from './fileImporters';
+export { decodeAllQrFromBlob, decodeQrFromBlob } from './qr';
 export { SOURCE_LABELS } from './types';
 export type { ImportOptions, ImportResult, ImportSource, BatchInfo } from './types';
 
@@ -17,13 +18,13 @@ export function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || IMAGE_EXTENSIONS.test(file.name);
 }
 
-/** Decodes a QR code in an image and imports whatever it contains. */
+/** Decodes one or more QR codes in an image and imports whatever they contain. */
 export async function importFromImage(image: Blob, options: ImportOptions = {}): Promise<ImportResult> {
-  const text = await decodeQrFromBlob(image);
-  if (!text) {
+  const codes = await decodeAllQrFromBlob(image);
+  if (codes.length === 0) {
     throw new Error('No QR code was found in the image.');
   }
-  return importFromText(text, options);
+  return importFromText(codes.join('\n'), options);
 }
 
 /** Imports an uploaded or dropped file: QR images and any supported backup format. */
