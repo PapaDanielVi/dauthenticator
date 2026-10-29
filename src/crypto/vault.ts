@@ -18,6 +18,8 @@ import { sanitizeAccount } from '../shared/accounts';
 
 export const VAULT_STORAGE_KEY = 'dauth.vault';
 export const SESSION_STORAGE_KEY = 'dauth.session';
+export const BIOMETRIC_STORAGE_KEY = 'dauth.biometric';
+export const PIN_STORAGE_KEY = 'dauth.pin';
 
 /** Current on-disk format. The version pins the KDF parameters below. */
 export const VAULT_FORMAT_VERSION = 1;
@@ -250,6 +252,34 @@ export async function getUnlockedAt(): Promise<number | null> {
   return (await readSessionState())?.unlockedAt ?? null;
 }
 
+/**
+ * Returns a copy of the raw 32-byte key from active session, or null if locked.
+ * Caller owns and should wipe the returned buffer when finished.
+ */
+export async function getRawSessionKey(): Promise<Uint8Array<ArrayBuffer> | null> {
+  const state = await readSessionState();
+  if (!state) {
+    return null;
+  }
+  return base64ToBytes(state.key);
+}
+
+/**
+ * Unlocks the vault with an already decrypted/derived 256-bit raw AES key
+ * (such as from hardware biometric PRF or local PIN unlock).
+ * Verifies against current vault ciphertext before caching the session key.
+ */
+export async function unlockVaultWithRawKey(rawKey: Uint8Array<ArrayBuffer>): Promise<VaultData> {
+  const envelope = await getEncryptedVault();
+  if (!envelope) {
+    throw new VaultMissingError();
+  }
+  const key = await importAesKey(rawKey);
+  const data = normalizeVault(await decryptJson<unknown>(envelope, key));
+  await cacheSessionKey(rawKey, envelope.salt);
+  return data;
+}
+
 function emptyVault(): VaultData {
   return { version: 1, accounts: [] };
 }
@@ -383,6 +413,7 @@ export async function changePassword(currentPassword: string, nextPassword: stri
     const next = await encryptJson(data, await importAesKey(raw), saltB64);
     await writeEncryptedVault(next);
     await cacheSessionKey(raw, saltB64);
+    await chrome.storage.local.remove([BIOMETRIC_STORAGE_KEY, PIN_STORAGE_KEY]);
   } finally {
     wipe(raw);
   }
@@ -404,7 +435,10 @@ export async function decryptWithSession<T>(envelope: EncryptedVault): Promise<T
   }
 }
 
-/** Permanently removes the local vault and the session key. */
+/** Permanently removes the local vault, unlock methods, and the session key. */
 export async function destroyVault(): Promise<void> {
-  await Promise.all([chrome.storage.local.remove(VAULT_STORAGE_KEY), lockVault()]);
+  await Promise.all([
+    chrome.storage.local.remove([VAULT_STORAGE_KEY, BIOMETRIC_STORAGE_KEY, PIN_STORAGE_KEY]),
+    lockVault(),
+  ]);
 }

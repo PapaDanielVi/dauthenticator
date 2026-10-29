@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DAuthenticator",
   "short_name": "DAuth",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Local, privacy-first TOTP/HOTP authenticator with an encrypted vault, autofill and imports from Google Authenticator, Aegis, 2FAS and Bitwarden.",
   "minimum_chrome_version": "116",
   "icons": {
@@ -27,7 +27,7 @@
     "service_worker": "background/serviceWorker.js",
     "type": "module"
   },
-  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "alarms", "idle"],
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting", "alarms", "idle", "contextMenus"],
   "commands": {
     "fill-otp": {
       "suggested_key": {
@@ -35,6 +35,13 @@
         "mac": "Command+Shift+L"
       },
       "description": "Fill the matching 2FA code into the current page"
+    },
+    "lock-vault": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Lock the DAuthenticator vault immediately"
     }
   },
   "content_security_policy": {

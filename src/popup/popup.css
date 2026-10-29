@@ -850,3 +850,36 @@ body {
   color: var(--text-muted);
   text-align: center;
 }
+
+/* Unlock methods switcher & biometrics */
+.unlock-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 3px 6px;
+}
+
+.btn-link:hover {
+  color: var(--accent-hover);
+}
+
+.biometric-icon {
+  color: var(--accent);
+  filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.4));
+  transition: transform 0.2s ease;
+}
+
+.biometric-icon:hover {
+  transform: scale(1.06);
+}

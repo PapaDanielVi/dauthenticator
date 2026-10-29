@@ -564,3 +564,53 @@ textarea {
   color: var(--text-muted);
   text-align: center;
 }
+
+/* Unlock Methods Cards */
+.unlock-method-card {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 14px;
+}
+
+.method-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.method-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.method-title-wrap svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.method-title-wrap h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.method-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+kbd {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-primary);
+}

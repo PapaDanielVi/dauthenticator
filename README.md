@@ -37,7 +37,9 @@ Master password updates, inactivity auto-lock timeouts, and system lock detectio
 1. Zero-knowledge local vault: All secret seeds are encrypted at rest using Web Crypto (`crypto.subtle`). Key derivation uses PBKDF2 with SHA-256, 600,000 iterations, and a random 16-byte salt per vault. Encryption uses AES-256-GCM with a fresh 12-byte IV drawn for every write. Plaintext secrets never touch persistent storage or disk.
 2. Isolated storage: The encrypted vault lives strictly in `chrome.storage.local`. It never touches `window.localStorage`, `sessionStorage`, or `IndexedDB`, so clearing browser history or cache will not wipe your accounts. During service worker startup and initialization, `chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })` blocks untrusted page contexts and content scripts from reading the vault directly.
 3. In-memory session key: Unlocking the vault places the derived 256-bit AES key into `chrome.storage.session`. This storage area lives strictly in memory. When the browser closes, the key is gone, so you do not need to retype your master password on every popup click while your session is active.
-4. Auto-lock protection: The extension monitors user inactivity and system lock events. If you step away for a configurable period (default 15 minutes) or lock your machine, the in-memory session key is purged immediately.
+4. Auto-lock protection: The extension monitors inactivity timeouts (1 to 60 minutes), operating system screen lock, window blur (switching apps), and popup closure. You can also lock the vault instantly using the Ctrl+Shift+U shortcut (Command+Shift+U on Mac) or by right clicking the extension icon.
+5. Biometric and passkey unlock: Hardware-backed unlocking using WebAuthn. Authenticators with the PRF extension derive an encryption key inside the secure hardware to decrypt the session key. Platform authenticators without PRF use hardware user verification.
+6. Quick PIN unlock: Optional 4 to 8 digit numeric PIN derived with PBKDF2 (300,000 iterations). Enforces temporary lockout after 5 consecutive failed attempts. Master password always remains available as the root recovery key.
 
 ---
 
@@ -95,11 +97,13 @@ dauthenticator/
 │   └── icons/                   # Extension icons (16, 32, 48, 128 px)
 ├── src/
 │   ├── background/
-│   │   └── serviceWorker.ts     # Storage hardening, auto-lock alarm, shortcut command
+│   │   └── serviceWorker.ts     # Storage hardening, auto-lock alarm, shortcut commands
 │   ├── content/
 │   │   └── autofill.ts          # DOM inspection, split input handling, event dispatch
 │   ├── crypto/
+│   │   ├── biometrics.ts        # WebAuthn PRF and platform authenticator passkey engine
 │   │   ├── encoding.ts          # Base64, hex, utf8, memory wipe helpers
+│   │   ├── pin.ts               # Quick PIN PBKDF2 derivation and rate-limited lockout
 │   │   ├── totp.ts              # RFC 6238 / RFC 4226 Web Crypto generator and Base32 codec
 │   │   └── vault.ts             # PBKDF2 key derivation, AES-GCM encryption, session cache
 │   ├── importers/
@@ -119,6 +123,10 @@ dauthenticator/
 │   │   ├── popup.html           # Main extension UI and modal forms
 │   │   ├── popup.css            # Dark mode UI styles, timer rings, viewfinder
 │   │   └── popup.ts             # Vault view state, search, countdown loop, autofill
+│   ├── unlock/
+│   │   ├── unlock.html          # Standalone biometric and passkey unlock window
+│   │   ├── unlock.css           # Unlock window styling
+│   │   └── unlock.ts            # WebAuthn assertion runner and method switcher
 │   └── shared/
 │       ├── accounts.ts          # Validation, normalization, merging, sorting
 │       ├── export.ts            # Encrypted and plaintext file downloads

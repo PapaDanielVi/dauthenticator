@@ -14,7 +14,7 @@
           <img src="/icons/icon-32.png" alt="DAuthenticator Logo" class="brand-logo" />
           <div class="brand-text">
             <h2>DAuthenticator</h2>
-            <span class="brand-version">v1.0.1</span>
+            <span class="brand-version">v1.1.0</span>
           </div>
         </div>
         <nav class="sidebar-nav">
@@ -181,8 +181,62 @@
         <section id="tab-security" class="tab-pane">
           <header class="section-header">
             <h1>Security & Preferences</h1>
-            <p class="section-desc">Manage your master password, auto-lock timeouts and security policies.</p>
+            <p class="section-desc">Manage unlock methods, auto-lock policies and your master password.</p>
           </header>
+
+          <!-- Unlock Methods -->
+          <div class="card">
+            <h3>Unlock Methods</h3>
+            <p class="card-desc">Choose how you unlock DAuthenticator. Your master password always remains active as the root encryption key.</p>
+
+            <div class="field" style="margin-top: 12px;">
+              <label for="setting-preferred-unlock">Preferred Default Unlock View</label>
+              <select id="setting-preferred-unlock">
+                <option value="password">Master Password</option>
+                <option value="biometrics" id="opt-unlock-bio" disabled>Fingerprint / Passkey (Not configured)</option>
+                <option value="pin" id="opt-unlock-pin" disabled>Quick PIN (Not configured)</option>
+              </select>
+            </div>
+
+            <!-- Fingerprint / Passkey Card -->
+            <div class="unlock-method-card">
+              <div class="method-header">
+                <div class="method-title-wrap">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 0-10 10c0 3.3 1.6 6.2 4.1 8"/><path d="M12 6a6 6 0 0 0-6 6c0 1.9.9 3.6 2.3 4.7"/><path d="M12 10a2 2 0 0 0-2 2c0 .6.3 1.2.8 1.6"/></svg>
+                  <div>
+                    <h4>Fingerprint / Passkey (Touch ID, Windows Hello, Security Key)</h4>
+                    <p id="bio-method-status" class="method-desc">Checking status...</p>
+                  </div>
+                </div>
+                <div class="btn-group">
+                  <button type="button" id="btn-setup-bio" class="btn btn-primary btn-sm">Set Up Passkey</button>
+                  <button type="button" id="btn-test-bio" class="btn btn-secondary btn-sm hidden">Test Unlock</button>
+                  <button type="button" id="btn-remove-bio" class="btn btn-danger btn-sm hidden">Remove</button>
+                </div>
+              </div>
+              <div id="bio-alert" class="alert-info hidden" style="margin-top: 10px;"></div>
+              <div id="bio-error" class="alert-error hidden" style="margin-top: 10px;"></div>
+            </div>
+
+            <!-- Quick PIN Card -->
+            <div class="unlock-method-card">
+              <div class="method-header">
+                <div class="method-title-wrap">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <div>
+                    <h4>Quick PIN (4 to 8 Digits)</h4>
+                    <p id="pin-method-status" class="method-desc">Checking status...</p>
+                  </div>
+                </div>
+                <div class="btn-group">
+                  <button type="button" id="btn-setup-pin-modal" class="btn btn-primary btn-sm">Set Up PIN</button>
+                  <button type="button" id="btn-remove-pin" class="btn btn-danger btn-sm hidden">Remove</button>
+                </div>
+              </div>
+              <div id="pin-alert" class="alert-info hidden" style="margin-top: 10px;"></div>
+              <div id="pin-error" class="alert-error hidden" style="margin-top: 10px;"></div>
+            </div>
+          </div>
 
           <div class="card">
             <h3>Change Master Password</h3>
@@ -209,10 +263,12 @@
           </div>
 
           <div class="card">
-            <h3>Auto-Lock & Preferences</h3>
-            <div class="field">
+            <h3>Auto-Lock & Locking Rules</h3>
+            <p class="card-desc">Control when DAuthenticator locks your vault automatically. You can also press <kbd>Ctrl+Shift+U</kbd> (<kbd>Cmd+Shift+U</kbd> on Mac) to lock instantly from any tab.</p>
+            <div class="field" style="margin-top: 12px;">
               <label for="setting-autolock">Inactivity Auto-Lock Timeout</label>
               <select id="setting-autolock">
+                <option value="1">1 minute</option>
                 <option value="5">5 minutes</option>
                 <option value="15">15 minutes (Default)</option>
                 <option value="30">30 minutes</option>
@@ -224,6 +280,18 @@
               <label>
                 <input type="checkbox" id="setting-lock-system" />
                 <span>Lock vault immediately when operating system locks screen</span>
+              </label>
+            </div>
+            <div class="field-checkbox">
+              <label>
+                <input type="checkbox" id="setting-lock-blur" />
+                <span>Lock vault when Chrome window loses focus (switched to another app)</span>
+              </label>
+            </div>
+            <div class="field-checkbox">
+              <label>
+                <input type="checkbox" id="setting-lock-popup-close" />
+                <span>Lock vault immediately whenever the extension popup closes</span>
               </label>
             </div>
             <div class="field-checkbox">
@@ -293,6 +361,32 @@
           <button type="button" id="btn-camera-cancel" class="btn btn-secondary">Cancel</button>
           <button type="button" id="btn-camera-finish" class="btn btn-primary hidden">Confirm Batch (<span id="camera-batch-count">0</span>)</button>
         </div>
+      </div>
+    </div>
+
+    <!-- PIN Setup Modal -->
+    <div id="modal-pin-setup" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="modal-pin-title">Set Up Quick PIN</h2>
+          <button id="modal-pin-close" class="btn-close">&times;</button>
+        </div>
+        <form id="form-setup-pin" class="modal-body">
+          <p class="modal-desc">Create a 4 to 8 digit numeric PIN for quick unlock. Your master password will remain required as a recovery fallback.</p>
+          <div class="field">
+            <label for="input-pin-new">New PIN (4 to 8 digits)</label>
+            <input type="password" id="input-pin-new" inputmode="numeric" pattern="[0-9]*" maxlength="8" required autofocus placeholder="Enter 4-8 digits" />
+          </div>
+          <div class="field">
+            <label for="input-pin-confirm">Confirm PIN</label>
+            <input type="password" id="input-pin-confirm" inputmode="numeric" pattern="[0-9]*" maxlength="8" required placeholder="Re-enter PIN" />
+          </div>
+          <div id="pin-setup-error" class="alert-error hidden"></div>
+          <div class="modal-footer">
+            <button type="button" id="btn-cancel-pin-setup" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save PIN</button>
+          </div>
+        </form>
       </div>
     </div>
 

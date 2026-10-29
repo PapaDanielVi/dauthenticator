@@ -4,7 +4,21 @@
 import {
   changePassword,
   destroyVault,
+  isUnlocked,
 } from '../crypto/vault';
+import {
+  hasBiometrics,
+  getBiometricConfig,
+  registerBiometrics,
+  unlockWithBiometrics,
+  removeBiometrics,
+  isPlatformAuthenticatorAvailable,
+} from '../crypto/biometrics';
+import {
+  hasPin,
+  setupPin,
+  removePin,
+} from '../crypto/pin';
 import { getSettings, updateSettings } from '../shared/settings';
 import { addAccounts } from '../shared/vaultOps';
 import { clearSync, getSyncStatus, mergeFromSync, pushVaultToSync } from '../shared/sync';
@@ -72,9 +86,38 @@ const pwdSuccess = document.getElementById('pwd-success') as HTMLElement;
 
 const settingAutolock = document.getElementById('setting-autolock') as HTMLSelectElement;
 const settingLockSystem = document.getElementById('setting-lock-system') as HTMLInputElement;
+const settingLockBlur = document.getElementById('setting-lock-blur') as HTMLInputElement;
+const settingLockPopupClose = document.getElementById('setting-lock-popup-close') as HTMLInputElement;
 const settingLearnDomains = document.getElementById('setting-learn-domains') as HTMLInputElement;
 const btnSavePrefs = document.getElementById('btn-save-prefs') as HTMLButtonElement;
 const btnDestroyVault = document.getElementById('btn-destroy-vault') as HTMLButtonElement;
+
+// Unlock Methods elements
+const settingPreferredUnlock = document.getElementById('setting-preferred-unlock') as HTMLSelectElement;
+const optUnlockBio = document.getElementById('opt-unlock-bio') as HTMLOptionElement;
+const optUnlockPin = document.getElementById('opt-unlock-pin') as HTMLOptionElement;
+
+const bioMethodStatus = document.getElementById('bio-method-status') as HTMLElement;
+const btnSetupBio = document.getElementById('btn-setup-bio') as HTMLButtonElement;
+const btnTestBio = document.getElementById('btn-test-bio') as HTMLButtonElement;
+const btnRemoveBio = document.getElementById('btn-remove-bio') as HTMLButtonElement;
+const bioAlert = document.getElementById('bio-alert') as HTMLElement;
+const bioError = document.getElementById('bio-error') as HTMLElement;
+
+const pinMethodStatus = document.getElementById('pin-method-status') as HTMLElement;
+const btnSetupPinModal = document.getElementById('btn-setup-pin-modal') as HTMLButtonElement;
+const btnRemovePin = document.getElementById('btn-remove-pin') as HTMLButtonElement;
+const pinAlert = document.getElementById('pin-alert') as HTMLElement;
+const pinError = document.getElementById('pin-error') as HTMLElement;
+
+// PIN Setup Modal
+const modalPinSetup = document.getElementById('modal-pin-setup') as HTMLElement;
+const modalPinClose = document.getElementById('modal-pin-close') as HTMLButtonElement;
+const formSetupPin = document.getElementById('form-setup-pin') as HTMLFormElement;
+const inputPinNew = document.getElementById('input-pin-new') as HTMLInputElement;
+const inputPinConfirm = document.getElementById('input-pin-confirm') as HTMLInputElement;
+const pinSetupError = document.getElementById('pin-setup-error') as HTMLElement;
+const btnCancelPinSetup = document.getElementById('btn-cancel-pin-setup') as HTMLButtonElement;
 
 // Password modal
 const modalPassword = document.getElementById('modal-password') as HTMLElement;
@@ -555,17 +598,190 @@ formChangePassword.addEventListener('submit', async (e) => {
   }
 });
 
+async function refreshUnlockMethods(): Promise<void> {
+  const bioConfigured = await hasBiometrics();
+  const pinConfigured = await hasPin();
+  const settings = await getSettings();
+
+  if (bioConfigured) {
+    const config = await getBiometricConfig();
+    const dateStr = config?.createdAt ? new Date(config.createdAt).toLocaleDateString() : 'Active';
+    bioMethodStatus.textContent = `Enrolled on ${dateStr}${config?.prfSupported ? ' (hardware PRF encryption)' : ''}`;
+    btnSetupBio.textContent = 'Re-register Passkey';
+    btnTestBio.classList.remove('hidden');
+    btnRemoveBio.classList.remove('hidden');
+    optUnlockBio.disabled = false;
+    optUnlockBio.textContent = 'Fingerprint / Passkey (Ready)';
+  } else {
+    const platform = await isPlatformAuthenticatorAvailable();
+    bioMethodStatus.textContent = platform
+      ? 'Supported (Touch ID / Windows Hello detected)'
+      : 'Not set up (Security Key / Passkey supported)';
+    btnSetupBio.textContent = 'Set Up Passkey';
+    btnTestBio.classList.add('hidden');
+    btnRemoveBio.classList.add('hidden');
+    optUnlockBio.disabled = true;
+    optUnlockBio.textContent = 'Fingerprint / Passkey (Not configured)';
+  }
+
+  if (pinConfigured) {
+    pinMethodStatus.textContent = 'Active (4 to 8 digit quick PIN)';
+    btnSetupPinModal.textContent = 'Change PIN';
+    btnRemovePin.classList.remove('hidden');
+    optUnlockPin.disabled = false;
+    optUnlockPin.textContent = 'Quick PIN (Ready)';
+  } else {
+    pinMethodStatus.textContent = 'Not configured';
+    btnSetupPinModal.textContent = 'Set Up PIN';
+    btnRemovePin.classList.add('hidden');
+    optUnlockPin.disabled = true;
+    optUnlockPin.textContent = 'Quick PIN (Not configured)';
+  }
+
+  settingPreferredUnlock.value = settings.preferredUnlockMethod;
+}
+
+settingPreferredUnlock.addEventListener('change', async () => {
+  const method = settingPreferredUnlock.value as 'password' | 'biometrics' | 'pin';
+  await updateSettings({ preferredUnlockMethod: method });
+  const label =
+    method === 'biometrics'
+      ? 'Fingerprint / Passkey'
+      : method === 'pin'
+        ? 'Quick PIN'
+        : 'Master Password';
+  showToast(`Default unlock view set to ${label}.`);
+});
+
+btnSetupBio.addEventListener('click', async () => {
+  bioError.classList.add('hidden');
+  bioAlert.classList.add('hidden');
+
+  if (!(await isUnlocked())) {
+    bioError.textContent = 'Please unlock your vault before registering a passkey.';
+    bioError.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    await registerBiometrics();
+    bioAlert.textContent = 'Fingerprint / Passkey enrolled successfully!';
+    bioAlert.classList.remove('hidden');
+    showToast('Passkey registered.');
+    await refreshUnlockMethods();
+  } catch (err) {
+    bioError.textContent = (err as Error).message || 'Failed to register passkey.';
+    bioError.classList.remove('hidden');
+  }
+});
+
+btnTestBio.addEventListener('click', async () => {
+  bioError.classList.add('hidden');
+  bioAlert.classList.add('hidden');
+  try {
+    await unlockWithBiometrics();
+    bioAlert.textContent = 'Verification successful! Passkey correctly unlocked vault.';
+    bioAlert.classList.remove('hidden');
+    showToast('Biometric verified.');
+  } catch (err) {
+    bioError.textContent = (err as Error).message || 'Verification failed.';
+    bioError.classList.remove('hidden');
+  }
+});
+
+btnRemoveBio.addEventListener('click', async () => {
+  const confirmed = confirm('Remove biometric / passkey unlock? You will unlock with your master password.');
+  if (!confirmed) return;
+  await removeBiometrics();
+  bioAlert.classList.add('hidden');
+  bioError.classList.add('hidden');
+  showToast('Passkey removed.');
+  await refreshUnlockMethods();
+});
+
+btnSetupPinModal.addEventListener('click', async () => {
+  pinError.classList.add('hidden');
+  pinAlert.classList.add('hidden');
+  pinSetupError.classList.add('hidden');
+
+  if (!(await isUnlocked())) {
+    pinError.textContent = 'Please unlock your vault before configuring a PIN.';
+    pinError.classList.remove('hidden');
+    return;
+  }
+
+  inputPinNew.value = '';
+  inputPinConfirm.value = '';
+  modalPinSetup.classList.remove('hidden');
+  inputPinNew.focus();
+});
+
+modalPinClose.addEventListener('click', () => {
+  modalPinSetup.classList.add('hidden');
+});
+
+btnCancelPinSetup.addEventListener('click', () => {
+  modalPinSetup.classList.add('hidden');
+});
+
+formSetupPin.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  pinSetupError.classList.add('hidden');
+
+  const p1 = inputPinNew.value.trim();
+  const p2 = inputPinConfirm.value.trim();
+
+  if (p1 !== p2) {
+    pinSetupError.textContent = 'PINs do not match.';
+    pinSetupError.classList.remove('hidden');
+    return;
+  }
+
+  if (!/^\d{4,8}$/.test(p1)) {
+    pinSetupError.textContent = 'PIN must be between 4 and 8 numeric digits.';
+    pinSetupError.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    await setupPin(p1);
+    modalPinSetup.classList.add('hidden');
+    pinAlert.textContent = 'Quick PIN set up successfully!';
+    pinAlert.classList.remove('hidden');
+    showToast('PIN saved.');
+    await refreshUnlockMethods();
+  } catch (err) {
+    pinSetupError.textContent = (err as Error).message || 'Failed to save PIN.';
+    pinSetupError.classList.remove('hidden');
+  }
+});
+
+btnRemovePin.addEventListener('click', async () => {
+  const confirmed = confirm('Remove Quick PIN unlock?');
+  if (!confirmed) return;
+  await removePin();
+  pinAlert.classList.add('hidden');
+  pinError.classList.add('hidden');
+  showToast('Quick PIN removed.');
+  await refreshUnlockMethods();
+});
+
 async function loadPreferences(): Promise<void> {
   const settings = await getSettings();
   settingAutolock.value = String(settings.autoLockMinutes);
   settingLockSystem.checked = settings.lockOnSystemLock;
+  settingLockBlur.checked = settings.lockOnWindowBlur;
+  settingLockPopupClose.checked = settings.lockOnPopupClose;
   settingLearnDomains.checked = settings.learnDomains;
+  await refreshUnlockMethods();
 }
 
 btnSavePrefs.addEventListener('click', async () => {
   await updateSettings({
     autoLockMinutes: Number(settingAutolock.value),
     lockOnSystemLock: settingLockSystem.checked,
+    lockOnWindowBlur: settingLockBlur.checked,
+    lockOnPopupClose: settingLockPopupClose.checked,
     learnDomains: settingLearnDomains.checked,
   });
   showToast('Preferences saved.');

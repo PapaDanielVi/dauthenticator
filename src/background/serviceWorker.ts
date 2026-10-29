@@ -128,16 +128,38 @@ setupStorageSecurity().catch((err) => {
   console.error('Failed to set storage access level during initialization:', err);
 });
 
+function setupContextMenu(): void {
+  try {
+    chrome.contextMenus.create({
+      id: 'lock-vault-action',
+      title: 'Lock DAuthenticator Vault',
+      contexts: ['action'],
+    });
+  } catch {
+    // Menu item may already exist
+  }
+}
+
 // Lifecycle events
 chrome.runtime.onInstalled.addListener(async () => {
   await setupStorageSecurity();
   await chrome.alarms.create(AUTO_LOCK_ALARM, { periodInMinutes: 1 });
   await updateBadge();
+  setupContextMenu();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await setupStorageSecurity();
   await updateBadge();
+  setupContextMenu();
+});
+
+// Context menu listener
+chrome.contextMenus.onClicked.addListener(async (info) => {
+  if (info.menuItemId === 'lock-vault-action') {
+    await lockVault();
+    await updateBadge();
+  }
 });
 
 // Periodic alarm check for inactivity timeout
@@ -158,11 +180,44 @@ chrome.idle.onStateChanged.addListener(async (state) => {
   }
 });
 
+// Lock when browser window loses focus (if enabled)
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    const settings = await getSettings();
+    if (settings.lockOnWindowBlur) {
+      await lockVault();
+      await updateBadge();
+    }
+  }
+});
+
 // Keyboard command shortcut listener
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'fill-otp') {
     await autofillActiveTab();
+  } else if (command === 'lock-vault') {
+    await lockVault();
+    await updateBadge();
   }
+});
+
+// Message listener for explicit lock actions or popup events
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'LOCK_VAULT') {
+    void lockVault().then(() => updateBadge()).then(() => sendResponse({ success: true }));
+    return true;
+  }
+  if (message?.type === 'POPUP_CLOSED') {
+    void (async () => {
+      const settings = await getSettings();
+      if (settings.lockOnPopupClose) {
+        await lockVault();
+        await updateBadge();
+      }
+    })();
+    return false;
+  }
+  return false;
 });
 
 // Broadcast storage changes to update badge

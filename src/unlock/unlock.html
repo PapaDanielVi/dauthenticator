@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unlock DAuthenticator</title>
+    <link rel="stylesheet" href="unlock.css" />
+  </head>
+  <body>
+    <div class="unlock-container">
+      <header class="unlock-header">
+        <img src="/icons/icon-48.png" alt="DAuthenticator Logo" class="brand-logo" />
+        <h1 class="brand-title">DAuthenticator</h1>
+        <p id="unlock-subtitle" class="subtitle">Vault is locked</p>
+      </header>
+
+      <!-- Biometric / Passkey View -->
+      <section id="section-biometric" class="unlock-section">
+        <div class="biometric-icon-wrapper">
+          <svg class="biometric-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a10 10 0 0 0-10 10c0 3.3 1.6 6.2 4.1 8" />
+            <path d="M12 6a6 6 0 0 0-6 6c0 1.9.9 3.6 2.3 4.7" />
+            <path d="M12 10a2 2 0 0 0-2 2c0 .6.3 1.2.8 1.6" />
+            <path d="M14 12a2 2 0 0 1-1.2 1.8" />
+            <path d="M16 12a4 4 0 0 1-2.4 3.7" />
+            <path d="M18 12a6 6 0 0 1-3.6 5.5" />
+            <path d="M20 12a8 8 0 0 1-4.8 7.3" />
+            <path d="M22 12a10 10 0 0 1-6 9.2" />
+          </svg>
+        </div>
+        <p id="bio-status" class="status-text">Touch your fingerprint sensor or activate your passkey...</p>
+        <div id="bio-error" class="alert-error hidden"></div>
+        <button id="btn-trigger-bio" class="btn btn-primary btn-block">Scan Fingerprint / Passkey</button>
+      </section>
+
+      <!-- PIN View -->
+      <section id="section-pin" class="unlock-section hidden">
+        <form id="form-pin" class="form-card">
+          <div class="field">
+            <label for="input-pin">Quick PIN (4 to 8 digits)</label>
+            <input type="password" id="input-pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••" autocomplete="off" />
+          </div>
+          <div id="pin-error" class="alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Unlock with PIN</button>
+        </form>
+      </section>
+
+      <!-- Password View -->
+      <section id="section-password" class="unlock-section hidden">
+        <form id="form-password" class="form-card">
+          <div class="field">
+            <label for="input-password">Master Password</label>
+            <input type="password" id="input-password" placeholder="Enter master password" autocomplete="current-password" />
+          </div>
+          <div id="password-error" class="alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Unlock with Password</button>
+        </form>
+      </section>
+
+      <!-- Method Switchers -->
+      <footer class="unlock-footer">
+        <div class="switch-methods">
+          <button id="switch-to-bio" class="btn-link hidden">Use Fingerprint / Passkey</button>
+          <button id="switch-to-pin" class="btn-link hidden">Use Quick PIN</button>
+          <button id="switch-to-pwd" class="btn-link">Use Master Password</button>
+        </div>
+        <button id="btn-cancel-window" class="btn btn-secondary btn-sm">Close</button>
+      </footer>
+    </div>
+
+    <script type="module" src="unlock.ts"></script>
+  </body>
+</html>

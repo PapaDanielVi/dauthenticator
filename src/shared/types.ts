@@ -43,11 +43,19 @@ export interface VaultData {
 }
 
 /** Non-secret user preferences, stored in plain chrome.storage.local. */
+export type PreferredUnlockMethod = 'password' | 'biometrics' | 'pin';
+
 export interface Settings {
   /** Minutes of inactivity before the session key is wiped. 0 disables the timer. */
   autoLockMinutes: number;
   /** Wipe the session key when the operating system locks the screen. */
   lockOnSystemLock: boolean;
+  /** Lock vault when the browser window loses focus. */
+  lockOnWindowBlur: boolean;
+  /** Lock vault whenever the extension popup closes. */
+  lockOnPopupClose: boolean;
+  /** User's preferred unlock method. */
+  preferredUnlockMethod: PreferredUnlockMethod;
   /** Mirror the encrypted vault to chrome.storage.sync after every change. */
   autoSync: boolean;
   /** Remember the site's hostname on an account after filling it from the popup. */
@@ -59,6 +67,9 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   autoLockMinutes: 15,
   lockOnSystemLock: true,
+  lockOnWindowBlur: false,
+  lockOnPopupClose: false,
+  preferredUnlockMethod: 'password',
   autoSync: false,
   learnDomains: true,
   lastSyncAt: null,

@@ -100,8 +100,15 @@ const mockSync = Object.assign(new MockStorageArea(), {
   scripting: {
     executeScript: async () => [],
   },
+  contextMenus: {
+    create: () => {},
+    onClicked: { addListener: () => {} },
+  },
   windows: {
     WINDOW_ID_CURRENT: -2,
+    WINDOW_ID_NONE: -1,
+    create: async () => ({ id: 1 }),
+    onFocusChanged: { addListener: () => {} },
   },
 };
 

@@ -20,6 +20,7 @@ export default defineConfig({
       input: {
         popup: resolve(root, 'popup/popup.html'),
         options: resolve(root, 'options/options.html'),
+        unlock: resolve(root, 'unlock/unlock.html'),
         serviceWorker: resolve(root, 'background/serviceWorker.ts'),
       },
       output: {

@@ -39,6 +39,39 @@
           <h1>DAuthenticator</h1>
           <p class="subtitle">Vault is locked</p>
         </div>
+
+        <!-- Biometric Unlock Card -->
+        <div id="card-unlock-bio" class="form-card hidden">
+          <div class="biometric-icon-wrapper" style="padding: 12px 0; display: flex; justify-content: center;">
+            <svg class="biometric-icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a10 10 0 0 0-10 10c0 3.3 1.6 6.2 4.1 8" />
+              <path d="M12 6a6 6 0 0 0-6 6c0 1.9.9 3.6 2.3 4.7" />
+              <path d="M12 10a2 2 0 0 0-2 2c0 .6.3 1.2.8 1.6" />
+              <path d="M14 12a2 2 0 0 1-1.2 1.8" />
+              <path d="M16 12a4 4 0 0 1-2.4 3.7" />
+              <path d="M18 12a6 6 0 0 1-3.6 5.5" />
+              <path d="M20 12a8 8 0 0 1-4.8 7.3" />
+              <path d="M22 12a10 10 0 0 1-6 9.2" />
+            </svg>
+          </div>
+          <p class="description" style="text-align: center;">Unlock with Touch ID, Windows Hello, or Passkey.</p>
+          <div id="unlock-bio-error" class="alert-error hidden"></div>
+          <button type="button" id="btn-unlock-biometric" class="btn btn-primary btn-block">
+            Unlock with Fingerprint / Passkey
+          </button>
+        </div>
+
+        <!-- PIN Unlock Card -->
+        <form id="form-unlock-pin" class="form-card hidden">
+          <div class="field">
+            <label for="unlock-pin">Quick PIN (4 to 8 digits)</label>
+            <input type="password" id="unlock-pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="••••" autocomplete="off" />
+          </div>
+          <div id="unlock-pin-error" class="alert-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Unlock with PIN</button>
+        </form>
+
+        <!-- Master Password Unlock Card -->
         <form id="form-unlock" class="form-card">
           <div class="field">
             <label for="unlock-password">Master Password</label>
@@ -48,6 +81,13 @@
           <div id="unlock-error" class="alert-error hidden"></div>
           <button type="submit" class="btn btn-primary btn-block">Unlock</button>
         </form>
+
+        <!-- Unlock Methods Switcher -->
+        <div class="unlock-switcher">
+          <button type="button" id="btn-switch-bio" class="btn-link hidden">Use Fingerprint / Passkey</button>
+          <button type="button" id="btn-switch-pin" class="btn-link hidden">Use Quick PIN</button>
+          <button type="button" id="btn-switch-pwd" class="btn-link hidden">Use Master Password</button>
+        </div>
       </section>
 
       <!-- 3. Unlocked Main View -->

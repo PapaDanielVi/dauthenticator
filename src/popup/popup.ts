@@ -8,7 +8,10 @@ import {
   unlockVault,
   lockVault,
   loadVault,
+  WrongPasswordError,
 } from '../crypto/vault';
+import { hasBiometrics } from '../crypto/biometrics';
+import { hasPin, unlockWithPin } from '../crypto/pin';
 import {
   generateCode,
   formatCode,
@@ -49,6 +52,18 @@ const formUnlock = document.getElementById('form-unlock') as HTMLFormElement;
 const unlockPassword = document.getElementById('unlock-password') as HTMLInputElement;
 const unlockCaps = document.getElementById('unlock-caps') as HTMLElement;
 const unlockError = document.getElementById('unlock-error') as HTMLElement;
+
+const cardUnlockBio = document.getElementById('card-unlock-bio') as HTMLElement;
+const btnUnlockBiometric = document.getElementById('btn-unlock-biometric') as HTMLButtonElement;
+const unlockBioError = document.getElementById('unlock-bio-error') as HTMLElement;
+
+const formUnlockPin = document.getElementById('form-unlock-pin') as HTMLFormElement;
+const unlockPin = document.getElementById('unlock-pin') as HTMLInputElement;
+const unlockPinError = document.getElementById('unlock-pin-error') as HTMLElement;
+
+const btnSwitchBio = document.getElementById('btn-switch-bio') as HTMLButtonElement;
+const btnSwitchPin = document.getElementById('btn-switch-pin') as HTMLButtonElement;
+const btnSwitchPwd = document.getElementById('btn-switch-pwd') as HTMLButtonElement;
 
 const btnScanScreen = document.getElementById('btn-scan-screen') as HTMLButtonElement;
 const btnUploadQrImage = document.getElementById('btn-upload-qr-image') as HTMLButtonElement;
@@ -130,13 +145,55 @@ function showToast(message: string): void {
   }, 2200);
 }
 
+function showUnlockCard(
+  method: 'biometrics' | 'pin' | 'password',
+  bioAvailable: boolean,
+  pinAvailable: boolean,
+): void {
+  cardUnlockBio.classList.toggle('hidden', method !== 'biometrics');
+  formUnlockPin.classList.toggle('hidden', method !== 'pin');
+  formUnlock.classList.toggle('hidden', method !== 'password');
+
+  btnSwitchBio.classList.toggle('hidden', !bioAvailable || method === 'biometrics');
+  btnSwitchPin.classList.toggle('hidden', !pinAvailable || method === 'pin');
+  btnSwitchPwd.classList.toggle('hidden', method === 'password');
+
+  unlockBioError.classList.add('hidden');
+  unlockPinError.classList.add('hidden');
+  unlockError.classList.add('hidden');
+
+  if (method === 'pin') {
+    unlockPin.value = '';
+    unlockPin.focus();
+  } else if (method === 'password') {
+    unlockPassword.value = '';
+    unlockPassword.focus();
+  }
+}
+
+async function setupUnlockView(): Promise<void> {
+  const bioAvailable = await hasBiometrics();
+  const pinAvailable = await hasPin();
+  const settings = await getSettings();
+
+  let defaultMethod: 'biometrics' | 'pin' | 'password' = 'password';
+  if (bioAvailable && settings.preferredUnlockMethod === 'biometrics') {
+    defaultMethod = 'biometrics';
+  } else if (pinAvailable && settings.preferredUnlockMethod === 'pin') {
+    defaultMethod = 'pin';
+  } else if (bioAvailable) {
+    defaultMethod = 'biometrics';
+  }
+
+  showUnlockCard(defaultMethod, bioAvailable, pinAvailable);
+}
+
 function switchView(view: 'setup' | 'unlock' | 'main'): void {
   viewSetup.classList.toggle('hidden', view !== 'setup');
   viewUnlock.classList.toggle('hidden', view !== 'unlock');
   viewMain.classList.toggle('hidden', view !== 'main');
   if (view === 'unlock') {
-    unlockPassword.value = '';
-    unlockPassword.focus();
+    void setupUnlockView();
   }
 }
 
@@ -419,7 +476,59 @@ formSetup.addEventListener('submit', async (e) => {
   }
 });
 
-// 2. Unlock Form
+// 2. Unlock Forms & Methods
+let navigatingAway = false;
+
+btnUnlockBiometric.addEventListener('click', async () => {
+  navigatingAway = true;
+  unlockBioError.classList.add('hidden');
+  try {
+    await chrome.windows.create({
+      url: chrome.runtime.getURL('unlock/unlock.html?method=biometrics'),
+      type: 'popup',
+      width: 380,
+      height: 480,
+      focused: true,
+    });
+  } catch {
+    await chrome.tabs.create({
+      url: chrome.runtime.getURL('unlock/unlock.html?method=biometrics'),
+    });
+  }
+});
+
+formUnlockPin.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  unlockPinError.classList.add('hidden');
+  const pin = unlockPin.value.trim();
+  if (!pin) {
+    return;
+  }
+  try {
+    await unlockWithPin(pin);
+    await init();
+  } catch (err) {
+    unlockPinError.textContent = (err as Error).message || 'Failed to unlock with PIN.';
+    unlockPinError.classList.remove('hidden');
+    unlockPin.select();
+  }
+});
+
+btnSwitchBio.addEventListener('click', async () => {
+  const [bioAvailable, pinAvailable] = await Promise.all([hasBiometrics(), hasPin()]);
+  showUnlockCard('biometrics', bioAvailable, pinAvailable);
+});
+
+btnSwitchPin.addEventListener('click', async () => {
+  const [bioAvailable, pinAvailable] = await Promise.all([hasBiometrics(), hasPin()]);
+  showUnlockCard('pin', bioAvailable, pinAvailable);
+});
+
+btnSwitchPwd.addEventListener('click', async () => {
+  const [bioAvailable, pinAvailable] = await Promise.all([hasBiometrics(), hasPin()]);
+  showUnlockCard('password', bioAvailable, pinAvailable);
+});
+
 formUnlock.addEventListener('submit', async (e) => {
   e.preventDefault();
   unlockError.classList.add('hidden');
@@ -427,7 +536,11 @@ formUnlock.addEventListener('submit', async (e) => {
     await unlockVault(unlockPassword.value);
     await init();
   } catch (err) {
-    unlockError.textContent = (err as Error).message;
+    if (err instanceof WrongPasswordError) {
+      unlockError.textContent = 'Incorrect master password.';
+    } else {
+      unlockError.textContent = (err as Error).message || 'Failed to unlock vault.';
+    }
     unlockError.classList.remove('hidden');
   }
 });
@@ -478,6 +591,7 @@ btnLockVault.addEventListener('click', async () => {
 });
 
 btnOpenOptions.addEventListener('click', () => {
+  navigatingAway = true;
   chrome.runtime.openOptionsPage();
 });
 
@@ -911,6 +1025,25 @@ document.addEventListener('paste', async (e) => {
         await processDroppedFile(file);
         break;
       }
+    }
+  }
+});
+
+// Automatically lock on popup close if the setting is enabled
+window.addEventListener('pagehide', () => {
+  if (!navigatingAway) {
+    chrome.runtime.sendMessage({ type: 'POPUP_CLOSED' });
+  }
+});
+
+// Sync UI state if session changes in another window (e.g. biometric unlock window)
+chrome.storage.onChanged.addListener(async (_changes, area) => {
+  if (area === 'session') {
+    const unlocked = await isUnlocked();
+    if (unlocked) {
+      await init();
+    } else if (await hasVault()) {
+      switchView('unlock');
     }
   }
 });
