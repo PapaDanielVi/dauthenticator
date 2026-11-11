@@ -448,6 +448,7 @@ async function init(): Promise<void> {
   }
 
   switchView('main');
+  searchInput.focus();
   await refreshVault();
   startCountdownLoop();
 }
@@ -506,6 +507,7 @@ formUnlockPin.addEventListener('submit', async (e) => {
   }
   try {
     await unlockWithPin(pin);
+    await chrome.runtime.sendMessage({ type: 'UNLOCK_VAULT' });
     await init();
   } catch (err) {
     unlockPinError.textContent = (err as Error).message || 'Failed to unlock with PIN.';
@@ -534,6 +536,7 @@ formUnlock.addEventListener('submit', async (e) => {
   unlockError.classList.add('hidden');
   try {
     await unlockVault(unlockPassword.value);
+    await chrome.runtime.sendMessage({ type: 'UNLOCK_VAULT' });
     await init();
   } catch (err) {
     if (err instanceof WrongPasswordError) {
@@ -586,6 +589,7 @@ btnToggleAllVisibility.addEventListener('click', async () => {
 // 4. Header buttons
 btnLockVault.addEventListener('click', async () => {
   await lockVault();
+  await chrome.runtime.sendMessage({ type: 'LOCK_VAULT' });
   if (timerInterval) clearInterval(timerInterval);
   switchView('unlock');
 });

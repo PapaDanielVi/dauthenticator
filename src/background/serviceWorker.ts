@@ -8,9 +8,11 @@
  * - Executes autofill script injection on demand.
  */
 import { hardenStorageAccess, isUnlocked, loadVault, lockVault, getUnlockedAt, hasVault } from '../crypto/vault';
+import { addAccounts } from '../shared/vaultOps';
 import { generateCode } from '../crypto/totp';
 import { hostnameFromUrl, matchAccounts, pickAutofillAccount } from '../shared/match';
 import { getSettings } from '../shared/settings';
+import { importFromImage } from '../importers';
 import type { FillCodeMessage } from '../shared/messages';
 
 const AUTO_LOCK_ALARM = 'dauth.autoLockCheck';
@@ -135,8 +137,13 @@ function setupContextMenu(): void {
       title: 'Lock DAuthenticator Vault',
       contexts: ['action'],
     });
+    chrome.contextMenus.create({
+      id: 'import-qr-from-image',
+      title: 'Import 2FA from QR code',
+      contexts: ['image'],
+    });
   } catch {
-    // Menu item may already exist
+    // Menu items may already exist
   }
 }
 
@@ -155,10 +162,13 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 
 // Context menu listener
-chrome.contextMenus.onClicked.addListener(async (info) => {
+chrome.contextMenus.onClicked.addListener(async (info: any) => {
   if (info.menuItemId === 'lock-vault-action') {
     await lockVault();
     await updateBadge();
+  }
+  if (info.menuItemId === 'import-qr-from-image') {
+    await importQrFromImage(info);
   }
 });
 
@@ -217,14 +227,59 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })();
     return false;
   }
+  if (message?.type === 'UNLOCK_VAULT') {
+    updateBadge();
+    return true;
+  }
   return false;
 });
 
-// Broadcast storage changes to update badge
-chrome.storage.onChanged.addListener((_changes, area) => {
-  if (area === 'session' || area === 'local') {
-    updateBadge();
+// Import QR code from image context menu
+async function importQrFromImage(info: any): Promise<void> {
+  try {
+    const imageUrl = info.srcUrl || info.linkUrl;
+    if (!imageUrl) {
+      console.log('Could not get image URL.');
+      return;
+    }
+
+    // Fetch the image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.log('Failed to fetch image.');
+      return;
+    }
+    const blob = await response.blob();
+
+    // Decode QR code from image using existing importer
+    const qrResult: any = await importFromImage(blob);
+    if (!qrResult || qrResult.accounts.length === 0) {
+      console.log('No valid 2FA credentials found in that QR code.');
+      return;
+    }
+
+    // Add accounts to vault
+    await addAccounts(qrResult.accounts);
+
+    // Generate and copy the current 2FA code
+    const vault = await loadVault();
+    const account = vault.accounts[vault.accounts.length - 1];
+    if (account) {
+      const now = Date.now();
+      const code = await generateCode(account, now);
+      await navigator.clipboard.writeText(code);
+      console.log(`Copied 2FA code: ${code}`);
+    } else {
+      console.log('Accounts imported but could not generate code.');
+    }
+  } catch (err) {
+    const errorMsg = (err as Error).message;
+    if (errorMsg.includes('Could not be read as an image')) {
+      console.log('That file could not be read as an image.');
+    } else {
+      console.log(`Import error: ${errorMsg}`);
+    }
   }
-});
+}
 
 export {};
