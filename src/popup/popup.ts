@@ -132,6 +132,26 @@ let timerInterval: number | null = null;
 const revealedAccountIds = new Set<string>();
 let revealedSecret = false;
 
+function redactAccount(value: string): string {
+  // Check if it's an email
+  const atIndex = value.indexOf('@');
+  if (atIndex > 0) {
+    // It's an email - redact 50% of characters before @, replace with *
+    const localPart = value.substring(0, atIndex);
+    const keepCount = Math.max(1, Math.floor(localPart.length * 0.5));
+    const redactCount = localPart.length - keepCount;
+    const redactedLocal = localPart.substring(0, keepCount);
+    const redactStar = '*'.repeat(Math.max(1, redactCount));
+    return redactedLocal + redactStar + value.substring(atIndex);
+  } else {
+    // Not an email - redact 50% from end, replace with *
+    const keepCount = Math.max(1, Math.floor(value.length * 0.5));
+    const redactCount = value.length - keepCount;
+    const redactStar = '*'.repeat(Math.max(1, redactCount));
+    return value.substring(0, keepCount) + redactStar;
+  }
+}
+
 const EYE_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_OFF_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
@@ -287,7 +307,7 @@ async function renderAccounts(): Promise<void> {
               ${escapeHtml(account.issuer || account.label)}
               ${account.pinned ? '<span class="pin-badge" title="Pinned account"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>' : ''}
             </span>
-            ${account.issuer && account.label ? `<span class="account-label">${escapeHtml(account.label)}</span>` : ''}
+            ${account.issuer && account.label ? `<span class="account-label">${redactAccount(account.label)}</span>` : ''}
           </div>
         </div>
         <div class="account-actions-top">
