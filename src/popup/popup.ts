@@ -86,6 +86,7 @@ const cameraBatchCount = document.getElementById('camera-batch-count') as HTMLEl
 const searchInput = document.getElementById('search-input') as HTMLInputElement;
 const btnSearchClear = document.getElementById('btn-search-clear') as HTMLButtonElement;
 const btnToggleAllVisibility = document.getElementById('btn-toggle-all-visibility') as HTMLButtonElement;
+const btnEye = document.getElementById('btn-eye') as HTMLButtonElement;
 
 const tabSuggestBanner = document.getElementById('tab-suggest-banner') as HTMLElement;
 const suggestDomain = document.getElementById('suggest-domain') as HTMLElement;
@@ -129,6 +130,7 @@ let activeMatchedAccount: AccountEntry | null = null;
 let searchQuery = '';
 let timerInterval: number | null = null;
 const revealedAccountIds = new Set<string>();
+let revealedSecret = false;
 
 const EYE_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_OFF_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -568,6 +570,25 @@ btnSearchClear.addEventListener('click', () => {
   searchQuery = '';
   btnSearchClear.classList.add('hidden');
   renderAccounts().catch(console.error);
+});
+
+accSecret.addEventListener('focus', () => {
+  // When user focuses on secret field, show eye button
+  btnEye.classList.remove('hidden');
+});
+
+accSecret.addEventListener('blur', () => {
+  // When user blurs, hide eye button after short delay
+  setTimeout(() => {
+    btnEye.classList.add('hidden');
+  }, 200);
+});
+
+btnEye.addEventListener('click', () => {
+  revealedSecret = !revealedSecret;
+  accSecret.type = revealedSecret ? 'text' : 'password';
+  btnEye.innerHTML = revealedSecret ? EYE_OFF_SVG : EYE_SVG;
+  btnEye.title = revealedSecret ? 'Hide secret' : 'Show secret';
 });
 
 btnToggleAllVisibility.addEventListener('click', async () => {

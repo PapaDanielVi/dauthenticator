@@ -174,9 +174,14 @@
                 <label for="acc-label">Account / Email</label>
                 <input type="text" id="acc-label" placeholder="e.g. danny@example.com" />
               </div>
-              <div class="field">
-                <label for="acc-secret">Secret Key (Base32)</label>
-                <input type="text" id="acc-secret" placeholder="e.g. JBSWY3DPEHPK3PXP" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <div class="field" style="display: flex; flex-direction: column; gap: 4px;">
+                <label for="acc-secret" style="font-size: 11px; color: var(--text-secondary); white-space: nowrap;">Secret Key (Base32)</label>
+                <div style="display: flex; flex-direction: row; gap: 8px; align-items: center;">
+                  <input type="password" id="acc-secret" placeholder="e.g. JBSWY3DPEHPK3PXP" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="flex: 1;">
+                  <button type="button" id="btn-eye" class="btn-icon btn-eye" title="Show secret" aria-label="Show secret">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
               </div>
               <div class="field-row">
                 <div class="field half">
